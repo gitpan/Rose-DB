@@ -20,3 +20,8 @@
 0.014 (03.15.2005) - John Siracusa <siracusa@mindspring.com>
 
     * Added alias_db() class method.
+
+0.0141 (03.15.2005) - John Siracusa <siracusa@mindspring.com>
+
+    * Fixed tests to account for versions of DBI without the 
+      parse_dsn() method.

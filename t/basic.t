@@ -164,7 +164,7 @@ ok(!defined($db->port) || $db->port eq 'port', 'dsn() 3');
 
 eval { $db->dsn('dbi:mysql:dbname=dbfoo;host=hfoo;port=pfoo') };
 
-ok($@, 'dsn() driver change');
+ok($@ || $DBI::VERSION <  1.43, 'dsn() driver change');
 
 $db = Rose::DB->new(domain  => 'test', type  => 'aux');
 my $adb = Rose::DB->new(domain  => 'atest', type  => 'aaux');
