@@ -13,7 +13,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.01';
+our $VERSION = '0.011';
 
 our $Debug = 0;
 
@@ -478,7 +478,7 @@ sub init_dbh
   return $self->{'dbh'} = $dbh;
 }
 
-use constant MAX_SANE_TIMESTAMP => 3000_00_00_00_00_00; # YYYYY MM DD HH MM SS
+use constant MAX_SANE_TIMESTAMP => 30000000000000; # YYYYY MM DD HH MM SS
 
 sub compare_timestamps
 {

@@ -7,7 +7,7 @@ use Rose::DateTime::Util();
 use Rose::DB;
 our @ISA = qw(Rose::DB);
 
-our $VERSION = '0.01';
+our $VERSION = '0.011';
 
 our $Debug = 0;
 
@@ -37,7 +37,7 @@ sub max_timestamp  { '9999-12-31 23:59:59.99999' }
 
 sub last_insertid_from_sth { $_[1]->{ix_sqlerrd}[1] }
 
-sub generate_primary_key_values { }
+sub generate_primary_key_values { return; }
 
 sub generate_primary_key_placeholders
 {
