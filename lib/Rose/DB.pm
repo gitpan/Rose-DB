@@ -13,7 +13,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.013';
+our $VERSION = '0.014';
 
 our $Debug = 0;
 
@@ -213,6 +213,28 @@ sub modify_db
     unless(exists $registry->{$domain} && exists $registry->{$domain}{$type});
 
   @{$registry->{$domain}{$type}}{keys %args} = values %args;
+}
+
+sub alias_db
+{
+  my($class, %args) = @_;
+
+  my $source = $args{'source'} or Carp::croak "Missing source";
+
+  my $src_domain = $source->{'domain'} or Carp::croak "Missing source domain";
+  my $src_type   = $source->{'type'} or Carp::croak "Missing source type";
+
+  my $alias = $args{'alias'} or Carp::croak "Missing alias";
+
+  my $alias_domain = $alias->{'domain'} or Carp::croak "Missing source domain";
+  my $alias_type   = $alias->{'type'} or Carp::croak "Missing source type";
+
+  my $registry = $class->db_registry_hash;
+
+  Carp::croak "No db defined for domain '$src_domain' and type '$src_type'"
+    unless(exists $registry->{$src_domain} && exists $registry->{$src_domain}{$src_type});
+
+  $registry->{$alias_domain}{$alias_type} = $registry->{$src_domain}{$src_type};
 }
 
 sub unregister_domain
@@ -1150,7 +1172,7 @@ Setting to hash to undef (using the 'reset' interface) will cause it to be re-co
 
 (These attributes use the C<inheritable_hash> method type as defined in C<Rose::Class::MakeMethods::Generic>.)
 
-=item B<modify_db>, B<register_db>, B<unregister_db>, B<unregister_domain>
+=item B<alias_db>, B<modify_db>, B<register_db>, B<unregister_db>, B<unregister_domain>
 
 All subclasses share the same data source "registry" with C<Rose::DB>.  There is an undocumented method for creating a private data source registry for a subclass of C<Rose::DB> (search DB.pm for C<sub db_registry_hash>), but it is subject to change without notice and should not be relied upon.  If there is enough demand for a supported method, I will add one.
 
@@ -1159,6 +1181,15 @@ All subclasses share the same data source "registry" with C<Rose::DB>.  There is
 =head1 CLASS METHODS
 
 =over 4
+
+=item B<alias_db PARAMS>
+
+Make one data source an alias for another by pointing them both to the same registry entry.  PARAMS are name/value pairs that must include domain and type values for both the source and alias parameters.  Example:
+
+    Rose::DB->alias_db(source => { domain => 'dev', type => 'main' },
+                       alias  => { domain => 'dev', type => 'aux' });
+
+This makes the "dev/aux" data source point to the same registry entry as the "dev/main" data source.  Modifications to either registry entry (via C<modify_db()>) will be reflected in both.
 
 =item B<default_connect_options [HASHREF | PAIRS]>
 
@@ -1193,7 +1224,7 @@ See the documentation for the C<new()> method for more information on how the dr
 
 =item B<modify_db PARAMS>
 
-Modify a new data source, setting the attributes specified in PARAMS, where
+Modify a data source, setting the attributes specified in PARAMS, where
 PARAMS are name/value pairs.  Any C<Rose::DB> object method that sets a L<data source configuration value|"Data Source Configuration"> is a valid parameter name.
 
     # Set new username for data source identified by domain and type
@@ -1250,6 +1281,8 @@ Database registration is often consolidated to a single module which is then C<u
     ...
 
 Data source registration can happen at any time, of course, but it is most useful when all application code can simply assume that all the data sources are already registered.  Doing the registration as early as possible (e.g., in a C<startup.pl> file that is loaded from an apache/mod_perl web server's C<httpd.conf> file) is the best way to create such an environment.
+
+Note that the data source registry serves as an I<initial> source of information for C<Rose::DB> objects.  Once an object is instantiated, it is independent of the registry.  Changes to an object are not reflected in the registry, and changes to the registry are not reflected in existing objects.
 
 =item B<unregister_db PARAMS>
 
@@ -1375,7 +1408,7 @@ Get or set the error message associated with the last failure.  If a method fail
 
 =item B<init_db_info>
 
-Initialize data source configuration information based on the current values of the C<type> and C<domain> attributes.  If there is no registered data source for the current C<type> and C<domain>, a fatal error will occur.  C<init_db_info()> is called as part of the C<new()> and C<connect()> methods.
+Initialize data source configuration information based on the current values of the C<type> and C<domain> attributes by pulling data from the corresponding registry entry.  If there is no registered data source for the current C<type> and C<domain>, a fatal error will occur.  C<init_db_info()> is called as part of the C<new()> and C<connect()> methods.
 
 =item B<insertid_param>
 

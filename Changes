@@ -16,3 +16,7 @@
 
     * Changes dsn() method to clear possibly changed DSN components,
       and also try to parse the DSN.
+
+0.014 (03.15.2005) - John Siracusa <siracusa@mindspring.com>
+
+    * Added alias_db() class method.

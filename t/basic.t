@@ -2,7 +2,7 @@
 
 use strict;
 
-use Test::More tests => 40;
+use Test::More tests => 50;
 
 BEGIN 
 {
@@ -46,6 +46,10 @@ BEGIN
     username => 'postgres',
     password => '',
   );
+
+  # Alias
+  Rose::DB->alias_db(source => { domain => 'test',  type => 'aux'  },
+                     alias  => { domain => 'atest', type => 'aaux' });
 
   package MyPgClass;
   @MyPgClass::ISA = qw(Rose::DB::Pg);
@@ -161,3 +165,24 @@ ok(!defined($db->port) || $db->port eq 'port', 'dsn() 3');
 eval { $db->dsn('dbi:mysql:dbname=dbfoo;host=hfoo;port=pfoo') };
 
 ok($@, 'dsn() driver change');
+
+$db = Rose::DB->new(domain  => 'test', type  => 'aux');
+my $adb = Rose::DB->new(domain  => 'atest', type  => 'aaux');
+
+foreach my $attr (qw(domain type driver database username password 
+                     connect_options post_connect_sql))
+{
+  is($db->username, $adb->username, "alias $attr()");
+}
+
+Rose::DB->modify_db(domain   => 'test', 
+                    type     => 'aux', 
+                    username => 'blargh',
+                    connect_options => { Foo => 1 });
+
+$db->init_db_info;
+$adb->init_db_info;
+
+is($db->username, $adb->username, "alias username() mod");
+is($db->connect_options, $adb->connect_options, "alias connect_options() mod");
+  
