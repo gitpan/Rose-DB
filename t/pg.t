@@ -147,11 +147,11 @@ SKIP:
 {
   unless(lookup_ip($db->host))
   {
-    skip("Host '@{[$db->host]}' not found", 39);
+    skip("Host '@{[$db->host]}' not found", 41);
   }
 
   eval { $db->connect };
-  skip("Could not connect to db 'test', 'pg' - $@", 39)  if($@);
+  skip("Could not connect to db 'test', 'pg' - $@", 41)  if($@);
   $dbh = $db->dbh;
 
   is($db->domain, 'test', "domain()");
