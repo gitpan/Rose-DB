@@ -2,7 +2,7 @@
 
 use strict;
 
-use Test::More tests => 36;
+use Test::More tests => 40;
 
 BEGIN 
 {
@@ -151,3 +151,13 @@ $db->connect_options({ zzzz => 'bar' });
 $keys2 = join(',', sort keys %{$db->connect_options});
 
 is($keys2, 'zzzz', 'connect_option() 2');
+
+$db->dsn('dbi:Pg:dbname=dbfoo;host=hfoo;port=pfoo');
+
+ok(!defined($db->database) || $db->database eq 'dbfoo', 'dsn() 1');
+ok(!defined($db->host) || $db->host eq 'hfoo', 'dsn() 2');
+ok(!defined($db->port) || $db->port eq 'port', 'dsn() 3');
+
+eval { $db->dsn('dbi:mysql:dbname=dbfoo;host=hfoo;port=pfoo') };
+
+ok($@, 'dsn() driver change');

@@ -12,3 +12,7 @@
 
     * Fixed incorrect skip amount in pg.t.  Sigh.
 
+0.013 (03.13.2005) - John Siracusa <siracusa@mindspring.com>
+
+    * Changes dsn() method to clear possibly changed DSN components,
+      and also try to parse the DSN.

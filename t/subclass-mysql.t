@@ -15,7 +15,7 @@ BEGIN
   }
   else
   {
-    Test::More->import(tests => 42);
+    Test::More->import(tests => 46);
   }
 }
 
@@ -148,6 +148,16 @@ SKIP:
 
   $db->disconnect;
 }
+
+$db->dsn('dbi:mysql:dbname=dbfoo;host=hfoo;port=pfoo');
+
+ok(!defined($db->database) || $db->database eq 'dbfoo', 'dsn() 1');
+ok(!defined($db->host) || $db->host eq 'hfoo', 'dsn() 2');
+ok(!defined($db->port) || $db->port eq 'port', 'dsn() 3');
+
+eval { $db->dsn('dbi:Pg:dbname=dbfoo;host=hfoo;port=pfoo') };
+
+ok($@, 'dsn() driver change');
 
 sub lookup_ip
 {

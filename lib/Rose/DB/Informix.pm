@@ -54,7 +54,7 @@ sub parse_boolean
   return $value  if($self->validate_boolean_keyword($_[1]) || $_[1] =~ /^\w+\(.*\)$/);
   return 1  if($value =~ /^[t1]$/i);
   return 0  if($value =~ /^[f0]$/i);
-  
+
   $self->error("Invalid boolean value: '$value'");
   return undef;
 }
@@ -104,7 +104,7 @@ sub parse_date
   return $_[1]  if($_[0]->validate_date_keyword($_[1]));
 
   my $dt = Rose::DateTime::Util::parse_date($_[1]);
-  
+
   if($@)
   {
     $_[0]->error("Could not parse date '$_[1]' - $@");
@@ -119,7 +119,7 @@ sub parse_datetime
   return $_[1]  if($_[0]->validate_datetime_keyword($_[1]));
 
   my $dt = Rose::DateTime::Util::parse_date($_[1]);
-  
+
   if($@)
   {
     $_[0]->error("Could not parse datetime '$_[1]' - $@");
@@ -134,7 +134,7 @@ sub parse_datetime_year_to_second
   return $_[1]  if($_[0]->validate_datetime_keyword($_[1]));
 
   my $dt = Rose::DateTime::Util::parse_date($_[1]);
-  
+
   if($@)
   {
     $_[0]->error("Could not parse datetime year to second '$_[1]' - $@");
@@ -150,7 +150,7 @@ sub parse_datetime_year_to_minute
   return $_[1]  if($_[0]->validate_datetime_keyword($_[1]));
 
   my $dt = Rose::DateTime::Util::parse_date($_[1]);
- 
+
 
   if($@)
   {
@@ -168,7 +168,7 @@ sub parse_timestamp
   return $_[1]  if($_[0]->validate_timestamp_keyword($_[1]));
 
   my $dt = Rose::DateTime::Util::parse_date($_[1]);
-  
+
   if($@)
   {
     $_[0]->error("Could not parse timestamp '$_[1]' - $@");
@@ -314,7 +314,7 @@ sub format_array
       qq("$_") 
     }
   } @array) . '}';
-  
+
   if(length($str) > $self->max_array_characters)
   {
     Carp::croak "Array string is longer than ", ref($self), 
@@ -339,13 +339,13 @@ sub next_value_in_sequence
     $sth->execute;
     $id = ${$sth->fetchrow_arrayref}[0];
   };
-  
+
   if($@)
   {
     $self->error("Could not get the next value in the sequence '$seq' - $@");
     return undef;
   }
-  
+
   return $id;
 }
 
@@ -384,7 +384,7 @@ Rose::DB::Informix - Informix driver class for Rose::DB.
 
   $dt  = $db->parse_datetime_year_to_minute(...);
   $val = $db->format_datetime_year_to_minute($dt);
-  
+
   $dt  = $db->parse_datetime_year_to_second(...);
   $val = $db->format_datetime_year_to_second($dt);
   ...

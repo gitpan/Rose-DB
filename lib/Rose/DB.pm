@@ -13,7 +13,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.012';
+our $VERSION = '0.013';
 
 our $Debug = 0;
 
@@ -25,7 +25,7 @@ use Rose::Object::MakeMethods::Generic
 (
   'scalar' =>
   [
-    qw(dsn database schema host port username password european_dates
+    qw(database schema host port username password european_dates
        _dbh_refcount _origin_class)
   ],
 
@@ -208,7 +208,7 @@ sub modify_db
   my $type   = delete $args{'type'} or Carp::croak "Missing type";
 
   my $registry = $class->db_registry_hash;
- 
+
   Carp::croak "No db defined for domain '$domain' and type '$type'"
     unless(exists $registry->{$domain} && exists $registry->{$domain}{$type});
 
@@ -243,7 +243,7 @@ sub new
   my $db_info;
 
   my $registry = $class->db_registry_hash;
- 
+
   if(exists $registry->{$domain} && exists $registry->{$domain}{$type})
   {
     $db_info = $registry->{$domain}{$type}
@@ -314,7 +314,7 @@ sub init_db_info
       my $options = $self->connect_options;
       @$options{keys %$custom_options} = values %$custom_options;
     }
-    
+
     $self->{'connect_options_for'} = { $domain => { $type => 1 } };
   }
 
@@ -348,6 +348,38 @@ sub connect_option
   return $options->{$param} = shift  if(@_);
   return $options->{$param};
 }
+
+sub dsn
+{
+  my($self) = shift;
+
+  return $self->{'dsn'}  unless(@_);
+
+  $self->{'dsn'} = shift;
+
+  $self->database(undef);
+  $self->host(undef);
+  $self->port(undef);
+
+  if(DBI->can('parse_dsn'))
+  {
+    if(my($scheme, $driver, $attr_string, $attr_hash, $driver_dsn) =
+         DBI->parse_dsn($self->{'dsn'}))
+    {
+      $self->driver($driver)  if($driver);
+
+      if($attr_string)
+      {
+        $self->_parsed_dsn($attr_hash, $driver_dsn);
+      }
+    }
+    else { $self->error("Couldn't parse DSN '$self->{'dsn'}'") }
+  }
+
+  return $self->{'dsn'};
+}
+
+sub _parsed_dsn { }
 
 sub dbh
 {
@@ -415,7 +447,7 @@ sub release_dbh
           return undef;
         }
       };
-  
+
       if($@)
       {
         $self->error("Could not do pre-disconnect SQL: $@");
@@ -726,7 +758,7 @@ sub parse_boolean
   return $value  if($self->validate_boolean_keyword($_[1]) || $_[1] =~ /^\w+\(.*\)$/);
   return 1  if($value =~ /^(?:t(?:rue)?|y(?:es)?|1)$/);
   return 0  if($value =~ /^(?:f(?:alse)?|no?|0)$/);
-  
+
   $self->error("Invalid boolean value: '$value'");
   return undef;
 }
@@ -995,7 +1027,7 @@ Rose::DB - A DBI wrapper and abstraction layer.
 
   $dt  = $db->parse_timestamp('2001-03-05 12:34:56.123');
   $val = $db->format_timestamp($dt);
-  
+
   $dt  = $db->parse_datetime('2001-03-05 12:34:56');
   $val = $db->format_datetime($dt);
 
@@ -1488,7 +1520,11 @@ The driver names are case-sensitive.
 
 =item B<dsn [DSN]>
 
-Get or set the C<DBI> DSN (Data Source Name) passed to the call to C<DBI>'s C<connect()> method.  If this value is set, all other DSN components are ignored (e.g., database, host, port).  If not, it is constructed from the components when C<init_db_info()> or C<connect()> is called.
+Get or set the C<DBI> DSN (Data Source Name) passed to the call to C<DBI>'s C<connect()> method.
+
+When this value is set, C<database>, C<host>, and C<port> are set to undef.  If using C<DBI> version 1.43 or later, an attempt is made to parse the new DSN using C<DBI>'s C<parse_dsn()> method.  Any parts successfully extracted are assigned to the corresponding C<Rose::DB> attributes (e.g., host, port, database).
+
+If the DSN is never set explicitly, it is initialized with the DSN constructed from the component values when C<init_db_info()> or C<connect()> is called.
 
 =item B<host [NAME]>
 
