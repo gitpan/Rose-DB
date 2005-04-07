@@ -2,9 +2,9 @@
 
 use strict;
 
-use Test::More tests => 50;
+use Test::More tests => 57;
 
-BEGIN 
+BEGIN
 {
   use_ok('Rose::DB');
   use_ok('Rose::DB::Constants');
@@ -62,6 +62,17 @@ my $db = Rose::DB->new;
 
 is(Rose::DB->default_domain, 'test', 'default_domain() 1');
 is(Rose::DB->default_type, 'default', 'default_type() 1');
+
+ok(Rose::DB->db_exists('default'), 'db_exists() 1');
+ok(!Rose::DB->db_exists('defaultx'), 'db_exists() 2');
+
+ok(Rose::DB->db_exists(type => 'default'), 'db_exists() 3');
+ok(!Rose::DB->db_exists(type => 'defaultx'), 'db_exists() 4');
+
+ok(Rose::DB->db_exists(type => 'default', domain => 'test'), 'db_exists() 3');
+ok(!Rose::DB->db_exists(type => 'defaultx', domain => 'testx'), 'db_exists() 4');
+
+ok(!Rose::DB->db_exists(type => 'defaultx', domain => 'test'), 'db_exists() 3');
 
 Rose::DB->error('foo');
 

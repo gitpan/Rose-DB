@@ -7,7 +7,7 @@ use DateTime::Format::Pg;
 use Rose::DB;
 our @ISA = qw(Rose::DB);
 
-our $VERSION = '0.01';
+our $VERSION = '0.011';
 
 our $Debug = 0;
 
@@ -49,6 +49,23 @@ sub null_datetime  { '0000-00-00 00:00:00' }
 sub null_timestamp { '00000000000000' }
 sub min_timestamp  { '-infinity' }
 sub max_timestamp  { 'infinity' }
+
+sub last_insertid_from_sth
+{
+  #my($self, $sth, $obj) = @_;
+
+  # Postgres demands that the primary key column not be in the insert
+  # statement at all in order for it to auto-generate a value.  The
+  # insert SQL will need to be modified to make this work for
+  # Rose::DB::Object...
+  #if($DBD::Pg::VERSION >= 1.40)
+  #{
+  #  my $meta = $obj->meta;
+  #  return $self->dbh->last_insert_id(undef, $meta->schema, $meta->table, undef);
+  #}
+
+  return undef;
+}
 
 sub parse_datetime
 {

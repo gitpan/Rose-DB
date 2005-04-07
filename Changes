@@ -25,3 +25,8 @@
 
     * Fixed tests to account for versions of DBI without the 
       parse_dsn() method.
+
+0.0142 (04.07.2005) - John Siracusa <siracusa@mindspring.com>
+
+    * Documented connect_options() method.
+    * Added db_exists() method.

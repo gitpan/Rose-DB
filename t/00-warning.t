@@ -19,7 +19,7 @@ print STDERR<<"EOF";
 ## If you have setup your database in a secure manner, these connection
 ## attempts will fail, and the tests will be skipped.  If you want to override
 ## these values, set the following environment variables before running tests.
-## (The default values are shown in parentheses.)
+## (The current values are shown in parentheses.)
 ## 
 ## Postgres:
 ## 

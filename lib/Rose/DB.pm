@@ -13,7 +13,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.0141';
+our $VERSION = '0.0142';
 
 our $Debug = 0;
 
@@ -203,9 +203,12 @@ sub unregister_db
 sub modify_db
 {
   my($class, %args) = @_;
+  
+  my $domain = delete $args{'domain'} || $class->default_domain ||
+    Carp::croak "Missing domain";
 
-  my $domain = delete $args{'domain'} or Carp::croak "Missing domain";
-  my $type   = delete $args{'type'} or Carp::croak "Missing type";
+  my $type   = delete $args{'type'} || $class->default_type ||
+    Carp::croak "Missing type";
 
   my $registry = $class->db_registry_hash;
 
@@ -213,6 +216,23 @@ sub modify_db
     unless(exists $registry->{$domain} && exists $registry->{$domain}{$type});
 
   @{$registry->{$domain}{$type}}{keys %args} = values %args;
+}
+
+sub db_exists
+{
+  my($class) = shift;
+  
+  my %args = (@_ == 1) ? (type => $_[0]) : @_;
+
+  my $domain = $args{'domain'} || $class->default_domain ||
+    Carp::croak "Missing domain";
+
+  my $type   = $args{'type'} || $class->default_type ||
+    Carp::croak "Missing type";
+
+  my $registry = $class->db_registry_hash;
+
+  return (exists $registry->{$domain} && exists $registry->{$domain}{$type}) ? 1 : 0;
 }
 
 sub alias_db
@@ -1191,6 +1211,10 @@ Make one data source an alias for another by pointing them both to the same regi
 
 This makes the "dev/aux" data source point to the same registry entry as the "dev/main" data source.  Modifications to either registry entry (via C<modify_db()>) will be reflected in both.
 
+=item B<db_exists PARAMS>
+
+Returns true of the data source specified by PARAMS is registered, false otherwise.  PARAMS are name/value pairs for C<domain> and C<type>.  If they are omitted, they default to C<default_domain> and C<default_type>, respectively.  If default values do not exist, a fatal error will occur.  If a single value is passed instead of name/value pairs, it is taken as the value of the C<type> parameter.
+
 =item B<default_connect_options [HASHREF | PAIRS]>
 
 Get or set the default C<DBI> connect options hash.  If a reference to a hash is passed, it replaces the default connect options hash.  If a series of name/value pairs are passed, they are added to the default connect options hash.
@@ -1232,9 +1256,8 @@ PARAMS are name/value pairs.  Any C<Rose::DB> object method that sets a L<data s
                         type     => 'main',
                         username => 'tester');
 
-PARAMS B<must> include values for both the C<type> and C<domain> parameters since these two attributes are used to identify the data source.  If either one is missing, a fatal error will occur.
 
-If there is no data source defined for the specified C<type> and C<domain>, a fatal error will occur.
+PARAMS should include values for both the C<type> and C<domain> parameters since these two attributes are used to identify the data source.  If they are omitted, they default to C<default_domain> and C<default_type>, respectively.  If default values do not exist, a fatal error will occur.  If there is no data source defined for the specified C<type> and C<domain>, a fatal error will occur.
 
 =item B<register_db PARAMS>
 
@@ -1370,6 +1393,12 @@ Get or set a single connection option.  Example:
     $db->connect_option(AutoCommit => 1);     # set
 
 Connection options are name/value pairs that are passed in a hash reference as the fourth argument to the call to C<DBI-E<gt>connect()>.  See the C<DBI> documentation for descriptions of the various options.
+
+=item B<connect_options [HASHREF | PAIRS]>
+
+Get or set the C<DBI> connect options hash.  If a reference to a hash is passed, it replaces the connect options hash.  If a series of name/value pairs are passed, they are added to the connect options hash.
+
+Returns a reference to the connect options has in scalar context, or a list of name/value pairs in list context.
 
 =item B<dbh>
 
