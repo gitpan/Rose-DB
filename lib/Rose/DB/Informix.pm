@@ -7,7 +7,7 @@ use Rose::DateTime::Util();
 use Rose::DB;
 our @ISA = qw(Rose::DB);
 
-our $VERSION = '0.011';
+our $VERSION = '0.012';
 
 our $Debug = 0;
 
@@ -141,7 +141,7 @@ sub parse_datetime_year_to_second
     return undef;
   }
 
-  $dt->truncate(to => 'second');
+  $dt->truncate(to => 'second')  if(ref $dt);
   return $dt;
 }
 
@@ -158,8 +158,7 @@ sub parse_datetime_year_to_minute
     return undef;
   }
 
-  $dt->truncate(to => 'minute');
-
+  $dt->truncate(to => 'minute')  if(ref $dt);
   return $dt;
 }
 

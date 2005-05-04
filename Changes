@@ -30,3 +30,9 @@
 
     * Documented connect_options() method.
     * Added db_exists() method.
+
+0.0143 (05.04.2005) - John Siracusa <siracusa@mindspring.com>
+
+    * Avoid trying to truncate undefined dates.
+
+
