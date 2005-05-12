@@ -4,8 +4,11 @@ lib/Rose/DB/Constants.pm
 lib/Rose/DB/Informix.pm
 lib/Rose/DB/MySQL.pm
 lib/Rose/DB/Pg.pm
+lib/Rose/DB/Registry.pm
+lib/Rose/DB/Registry/Entry.pm
 Makefile.PL
 MANIFEST
+META.yml			Module meta-data (added by MakeMaker)
 t/00-warning.t
 t/basic.t
 t/informix.t
@@ -20,4 +23,3 @@ t/subclass-trx.t
 t/subclass.t
 t/test-lib.pl
 t/trx.t
-META.yml                                 Module meta-data (added by MakeMaker)

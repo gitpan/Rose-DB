@@ -2,11 +2,13 @@
 
 use strict;
 
-use Test::More tests => 57;
+use Test::More tests => 84;
 
 BEGIN
 {
   use_ok('Rose::DB');
+  use_ok('Rose::DB::Registry');
+  use_ok('Rose::DB::Registry::Entry');
   use_ok('Rose::DB::Constants');
 
   require 't/test-lib.pl';
@@ -169,9 +171,9 @@ is($keys2, 'zzzz', 'connect_option() 2');
 
 $db->dsn('dbi:Pg:dbname=dbfoo;host=hfoo;port=pfoo');
 
-ok(!defined($db->database) || $db->database eq 'dbfoo', 'dsn() 1');
-ok(!defined($db->host) || $db->host eq 'hfoo', 'dsn() 2');
-ok(!defined($db->port) || $db->port eq 'port', 'dsn() 3');
+#ok(!defined($db->database) || $db->database eq 'dbfoo', 'dsn() 1');
+#ok(!defined($db->host) || $db->host eq 'hfoo', 'dsn() 2');
+#ok(!defined($db->port) || $db->port eq 'port', 'dsn() 3');
 
 eval { $db->dsn('dbi:mysql:dbname=dbfoo;host=hfoo;port=pfoo') };
 
@@ -196,4 +198,54 @@ $adb->init_db_info;
 
 is($db->username, $adb->username, "alias username() mod");
 is($db->connect_options, $adb->connect_options, "alias connect_options() mod");
+
+#
+# Registry tests
+#
+
+my $reg = Rose::DB->registry;
+
+ok($reg->isa('Rose::DB::Registry'), 'registry');
+
+my $entry = $reg->entry(domain => 'test', type => 'aux');
+
+ok($entry->isa('Rose::DB::Registry::Entry'), 'registry entry 1');
+
+foreach my $param (qw(autocommit database domain driver dsn host password port
+                      print_error raise_error server_time_zone schema type 
+                      username connect_options pre_disconnect_sql 
+                      post_connect_sql))
+{
+  eval { $entry->$param() };
   
+  ok(!$@, "entry $param()");
+}
+
+my $host     = $entry->host;
+my $database = $entry->database;
+
+Rose::DB->modify_db(domain => 'test', type => 'aux', host => 'foo', database => 'bar');
+
+is($entry->host, 'foo', 'entry modify_db() 1');
+is($entry->database, 'bar', 'entry modify_db() 2');
+
+is($entry->connect_option('RaiseError') || 0, 0, 'entry connect_option() 1');
+$entry->connect_option('RaiseError' => 1);
+is($entry->connect_option('RaiseError'), 1, 'entry connect_option() 2');
+
+$entry->pre_disconnect_sql(qw(sql1 sql2));
+my $sql = $entry->pre_disconnect_sql;
+ok(@$sql == 2 && $sql->[0] eq 'sql1' && $sql->[1] eq 'sql2', 'entry pre_disconnect_sql() 1');
+
+$entry->post_connect_sql(qw(sql3 sql4));
+$sql = $entry->post_connect_sql;
+ok(@$sql == 2 && $sql->[0] eq 'sql3' && $sql->[1] eq 'sql4', 'entry post_connect_sql() 1');
+
+$entry->raise_error(0);
+is($entry->connect_option('RaiseError'), 0, 'entry raise_error() 1');
+
+$entry->print_error(1);
+is($entry->connect_option('PrintError'), 1, 'entry print_error() 1');
+
+$entry->autocommit(1);
+is($entry->connect_option('AutoCommit'), 1, 'entry autocommit() 1');

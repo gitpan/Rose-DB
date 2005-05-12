@@ -8,12 +8,15 @@ use Bit::Vector::Overload;
 
 use Rose::DateTime::Util();
 
+use Rose::DB::Registry;
+use Rose::DB::Registry::Entry;
+
 use Rose::Object;
 our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.0143';
+our $VERSION = '0.015';
 
 our $Debug = 0;
 
@@ -60,6 +63,7 @@ use Rose::Class::MakeMethods::Generic
   [
     'default_domain',
     'default_type',
+    'registry',
   ]
 );
 
@@ -96,6 +100,8 @@ __PACKAGE__->default_connect_options
   Warn       => 0,
 );
 
+BEGIN { __PACKAGE__->registry(Rose::DB::Registry->new) }
+
 LOAD_SUBCLASSES:
 {
   my %seen;
@@ -112,13 +118,6 @@ LOAD_SUBCLASSES:
 #
 # Class methods
 #
-
-our %Registry;
-
-# Override this method in a sublcass to get a privatre registry.  This
-# feature is UNDOCUMENTED and UNSUPPORTED!  Use at your own risk...
-
-sub db_registry_hash { \%Registry }
 
 # Can't do this because drivers are subclasses too...
 # {
@@ -173,55 +172,34 @@ sub db_registry_hash { \%Registry }
 #   return $Registry{$class} ||= {};
 # }
 
-sub register_db
-{
-  my($class, %args) = @_;
-
-  my $domain = delete $args{'domain'} or Carp::croak "Missing domain";
-  my $type   = delete $args{'type'} or Carp::croak "Missing type";
-  exists $args{'driver'} or Carp::croak "Missing driver";
-
-  my $registry = $class->db_registry_hash;
-
-  $registry->{$domain}{$type} = \%args;
-}
-
-sub unregister_db
-{
-  my($class, %args) = @_;
-
-  my $domain = $args{'domain'} or Carp::croak "Missing domain";
-  my $type   = $args{'type'} or Carp::croak "Missing type";
-
-  my $registry = $class->db_registry_hash;
-
-  $registry->{$domain}{$type} = \%args;
-
-  delete $registry->{$domain}{$type};
-}
+sub register_db   { shift->registry->add_entry(@_)  }
+sub unregister_db { shift->registry->delete_entry(@_) }
 
 sub modify_db
 {
   my($class, %args) = @_;
-  
+
   my $domain = delete $args{'domain'} || $class->default_domain ||
     Carp::croak "Missing domain";
 
   my $type   = delete $args{'type'} || $class->default_type ||
     Carp::croak "Missing type";
 
-  my $registry = $class->db_registry_hash;
+  my $entry = $class->registry->entry(domain => $domain, type => $type) or
+    Carp::croak "No db defined for domain '$domain' and type '$type'";
 
-  Carp::croak "No db defined for domain '$domain' and type '$type'"
-    unless(exists $registry->{$domain} && exists $registry->{$domain}{$type});
+  while(my($key, $val) = each(%args))
+  {
+    $entry->$key($val);
+  }
 
-  @{$registry->{$domain}{$type}}{keys %args} = values %args;
+  return $entry;
 }
 
 sub db_exists
 {
   my($class) = shift;
-  
+
   my %args = (@_ == 1) ? (type => $_[0]) : @_;
 
   my $domain = $args{'domain'} || $class->default_domain ||
@@ -230,9 +208,7 @@ sub db_exists
   my $type   = $args{'type'} || $class->default_type ||
     Carp::croak "Missing type";
 
-  my $registry = $class->db_registry_hash;
-
-  return (exists $registry->{$domain} && exists $registry->{$domain}{$type}) ? 1 : 0;
+  return $class->registry->entry_exists(domain => $domain, type => $type);
 }
 
 sub alias_db
@@ -249,24 +225,22 @@ sub alias_db
   my $alias_domain = $alias->{'domain'} or Carp::croak "Missing source domain";
   my $alias_type   = $alias->{'type'} or Carp::croak "Missing source type";
 
-  my $registry = $class->db_registry_hash;
+  my $registry = $class->registry;
 
-  Carp::croak "No db defined for domain '$src_domain' and type '$src_type'"
-    unless(exists $registry->{$src_domain} && exists $registry->{$src_domain}{$src_type});
+  my $entry = $registry->entry(domain => $src_domain, type => $src_type) or
+    Carp::croak "No db defined for domain '$src_domain' and type '$src_type'";
 
-  $registry->{$alias_domain}{$alias_type} = $registry->{$src_domain}{$src_type};
+  $registry->add_entry(domain => $alias_domain, 
+                       type   => $alias_type,
+                       entry  => $entry);
 }
 
-sub unregister_domain
-{
-  my($class, $domain) = @_;
-  my $registry = $class->db_registry_hash;
-  delete $registry->{$domain};
-}
+sub unregister_domain { shift->registry->delete_domain(@_) }
 
 #
 # Object methods
 #
+
 
 sub new
 {
@@ -284,7 +258,11 @@ sub new
 
   my $db_info;
 
-  my $registry = $class->db_registry_hash;
+  # I'm being bad here for speed purposes, digging into private hashes instead
+  # of using object methods.  I'll fix it when the first person emails me to
+  # complain that I'm breaking their Rose::DB or Rose::DB::Registry[::Entry]
+  # subclass by doing this.  Call it "demand-paged programming" :)
+  my $registry = $class->registry->hash;
 
   if(exists $registry->{$domain} && exists $registry->{$domain}{$type})
   {
@@ -335,7 +313,11 @@ sub init_db_info
 
   my $db_info;
 
-  my $registry = $class->db_registry_hash;
+  # I'm being bad here for speed purposes, digging into private hashes instead
+  # of using object methods.  I'll fix it when the first person emails me to
+  # complain that I'm breaking their Rose::DB or Rose::DB::Registry[::Entry]
+  # subclass by doing this.  Call it "demand-paged programming" :)
+  my $registry = $class->registry->hash;
 
   if(exists $registry->{$domain} && exists $registry->{$domain}{$type})
   {
@@ -398,10 +380,6 @@ sub dsn
   return $self->{'dsn'}  unless(@_);
 
   $self->{'dsn'} = shift;
-
-  $self->database(undef);
-  $self->host(undef);
-  $self->port(undef);
 
   if(DBI->can('parse_dsn'))
   {
@@ -1307,6 +1285,12 @@ Data source registration can happen at any time, of course, but it is most usefu
 
 Note that the data source registry serves as an I<initial> source of information for C<Rose::DB> objects.  Once an object is instantiated, it is independent of the registry.  Changes to an object are not reflected in the registry, and changes to the registry are not reflected in existing objects.
 
+=item B<registry [REGISTRY]>
+
+Get or set the C<Rose::DB::Registry>-derived object that manages and stores the data source registry.  It defaults to an "empty" C<Rose::DB::Registry> object.  Remember that setting a new registry will replace the existing registry and all the data sources registered in it.
+
+See the C<Rose::DB::Registry> for more information.
+
 =item B<unregister_db PARAMS>
 
 Unregisters the data source having the C<type> and C<domain> specified in  PARAMS, where PARAMS are name/value pairs.  Returns true if the data source was unregistered successfully, false if it did not exist in the first place.  Example:
@@ -1584,9 +1568,11 @@ The driver names are case-sensitive.
 
 Get or set the C<DBI> DSN (Data Source Name) passed to the call to C<DBI>'s C<connect()> method.
 
-When this value is set, C<database>, C<host>, and C<port> are set to undef.  If using C<DBI> version 1.43 or later, an attempt is made to parse the new DSN using C<DBI>'s C<parse_dsn()> method.  Any parts successfully extracted are assigned to the corresponding C<Rose::DB> attributes (e.g., host, port, database).
+If using C<DBI> version 1.43 or later, an attempt is made to parse the new DSN using C<DBI>'s C<parse_dsn()> method.  Any parts successfully extracted are assigned to the corresponding C<Rose::DB> attributes (e.g., host, port, database).
 
-If the DSN is never set explicitly, it is initialized with the DSN constructed from the component values when C<init_db_info()> or C<connect()> is called.
+Note that an explicitly set DSN may render some other attributes inaccurate.  For example, the DSN may contain a host name that is different than the object's current C<host()> value.  If the host name is not successfully extracted from the DSN and applied to the object's C<host()> attribute, then the two values are out of sync.  I recommend not setting the DSN value explicitly unless you are also willing to manually synchronize (or ignore) the corresponding object attributes.
+
+If the DSN is never set explicitly, it is initialized with the DSN constructed from the appropriate object attribute values when C<init_db_info()> or C<connect()> is called.
 
 =item B<host [NAME]>
 
@@ -1623,6 +1609,10 @@ This method should not be mixed with the C<connect_options> method in calls to C
 Get or set the value of the "RaiseError" connect option and C<DBI> handle attribute.  If a VALUE is passed, it will be set in both the connect options hash and the current database handle, if any.  Returns the value of the "RaiseError" attribute of the database handle if it exists, or the connect option otherwise.
 
 This method should not be mixed with the C<connect_options> method in calls to C<register_db()> or C<modify_db()> since C<connect_options> will overwrite I<all> the connect options with its argument, and neither C<register_db()> nor C<modify_db()> guarantee the order that its parameters will be evaluated.
+
+=item B<schema [SCHEMA]>
+
+Get or set the database schema name.  This setting is only useful to databases that support the concept of schemas (e.g., PostgreSQL).
 
 =item B<server_time_zone [TZ]>
 

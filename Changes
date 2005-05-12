@@ -35,4 +35,9 @@
 
     * Avoid trying to truncate undefined dates.
 
+0.015 (05.12.2005) - John Siracusa <siracusa@mindspring.com>
 
+    * Added proper data source registry and registry entry objects.
+    * Changed behavior of dsn() method to reflect the fact that DBI's
+      parse_dsn() method rarely extracts the information I need.
+    * Added warning to documentation about DSN/attribute sync.
