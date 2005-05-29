@@ -41,3 +41,8 @@
     * Changed behavior of dsn() method to reflect the fact that DBI's
       parse_dsn() method rarely extracts the information I need.
     * Added warning to documentation about DSN/attribute sync.
+
+0.0151 (05.29.2005) - John Siracusa <siracusa@mindspring.com>
+
+    * Fixed a PostgreSQL transactions test in trx.t.
+

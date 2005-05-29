@@ -2,7 +2,7 @@
 
 use strict;
 
-use Test::More tests => 44;
+use Test::More tests => 45;
   
 BEGIN 
 {
@@ -58,12 +58,14 @@ SKIP: foreach my $db_type ('pg')
     ok(!defined $db->commit && $db->error, "commit() 2 - $db_type");
   }
 
+  ok($db->rollback, "rollback() 1 - $db_type");
+
   ok($db->begin_work, "begin_work() 3 - $db_type");
 
   $db->dbh->do(q(INSERT INTO rose_db_test (id, name, fid) VALUES (3, 'c', 1)));
   $db->dbh->do(q(INSERT INTO rose_db_test (id, name, fid) VALUES (4, 'd', 2)));
   
-  ok($db->rollback, "rollback() 1 - $db_type");
+  ok($db->rollback, "rollback() 2 - $db_type");
 
   ok($db->do_transaction(sub
   {
