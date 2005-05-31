@@ -46,3 +46,6 @@
 
     * Fixed a PostgreSQL transactions test in trx.t.
 
+0.0152 (05.31.2005) - John Siracusa <siracusa@mindspring.com>
+
+    * Corrected number of tests to skip in trx.t.

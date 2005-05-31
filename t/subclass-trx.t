@@ -20,7 +20,7 @@ My::DB2->default_domain('test');
 
 SKIP: foreach my $db_type ('pg')
 {
-  skip("Postgres tests", 17)  unless($HAVE_PG);
+  skip("Postgres tests", 18)  unless($HAVE_PG);
 
   My::DB2->default_type($db_type);
 
