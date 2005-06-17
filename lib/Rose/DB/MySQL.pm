@@ -143,11 +143,11 @@ Rose::DB::MySQL - MySQL driver class for Rose::DB.
 
 =head1 DESCRIPTION
 
-This is the subclass that C<Rose::DB> blesses an object into when the C<driver> is "mysql".  This mapping of drivers to class names is configurable.  See the documentation for C<Rose::DB>'s C<new()> and C<driver_class()> methods for more information.
+This is the subclass that L<Rose::DB> blesses an object into when the C<driver> is "mysql".  This mapping of drivers to class names is configurable.  See the documentation for L<Rose::DB>'s C<new()> and C<driver_class()> methods for more information.
 
-Using this class directly is not recommended.  Instead, use C<Rose::DB> and let it bless objects into the appropriate class for you, according to its C<driver_class()> mappings.
+Using this class directly is not recommended.  Instead, use L<Rose::DB> and let it bless objects into the appropriate class for you, according to its C<driver_class()> mappings.
 
-This class inherits from C<Rose::DB>.  B<Only the methods that are new or have  different behaviors are documented here.>  See the C<Rose::DB> documentation for information on the inherited methods.
+This class inherits from L<Rose::DB>.  B<Only the methods that are new or have  different behaviors are documented here.>  See the L<Rose::DB> documentation for information on the inherited methods.
 
 =head1 CLASS METHODS
 

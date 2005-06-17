@@ -72,9 +72,9 @@ Rose::DB::Registry::Entry - Data source registry entry.
 
 =head1 DESCRIPTION
 
-C<Rose::DB::Registry::Entry> objects store information about a single C<Rose::DB> data source.  See the C<Rose::DB> documentation for more information on data sources, and the C<Rose::DB::Registry> documentation to learn how C<Rose::DB::Registry::Entry> objects are managed.
+C<Rose::DB::Registry::Entry> objects store information about a single L<Rose::DB> data source.  See the L<Rose::DB> documentation for more information on data sources, and the L<Rose::DB::Registry> documentation to learn how C<Rose::DB::Registry::Entry> objects are managed.
 
-C<Rose::DB::Registry::Entry> inherits from, and follows the conventions of, C<Rose::Object>.  See the C<Rose::Object> documentation for more information.
+C<Rose::DB::Registry::Entry> inherits from, and follows the conventions of, L<Rose::Object>.  See the L<Rose::Object> documentation for more information.
 
 =head1 CONSTRUCTOR
 

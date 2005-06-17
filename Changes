@@ -49,3 +49,8 @@
 0.0152 (05.31.2005) - John Siracusa <siracusa@mindspring.com>
 
     * Corrected number of tests to skip in trx.t.
+
+0.0153 (06.17.2005) - John Siracusa <siracusa@mindspring.com>
+
+    * Added Bit::Vector::Overload to the prerequisites.
+    * Added links to the POD.

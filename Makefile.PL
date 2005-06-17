@@ -8,6 +8,7 @@ WriteMakefile(NAME         => 'Rose::DB',
               PREREQ_PM =>
               {
                 DBI                     => 0,
+                Bit::Vector::Overload   => 6.4,
                 DateTime::Format::Pg    => 0,
                 DateTime::Format::MySQL => 0,
                 Test::More              => 0,

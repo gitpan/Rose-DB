@@ -1,10 +1,11 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         Rose-DB
-version:      0.0152
+version:      0.0153
 version_from: lib/Rose/DB.pm
 installdirs:  site
 requires:
+    Bit::Vector::Overload:         6.4
     DateTime::Format::MySQL:       0
     DateTime::Format::Pg:          0
     DBI:                           0

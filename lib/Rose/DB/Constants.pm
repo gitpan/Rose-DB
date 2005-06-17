@@ -31,7 +31,7 @@ Rose::DB::Constants - Symbolic names for important Rose::DB constants.
 
 =head1 DESCRIPTION
 
-This module contains and optionally exports symbolic names for important C<Rose::DB> constants.  The only constant defined so far is C<IN_TRANSACTION>.  See the documentation for C<Rose::DB>'s C<begin_work()> object method for more information on this constant.
+This module contains and optionally exports symbolic names for important L<Rose::DB> constants.  The only constant defined so far is C<IN_TRANSACTION>.  See the documentation for L<Rose::DB>'s C<begin_work()> object method for more information on this constant.
 
 This module inherits from C<Exporter>.  No symbols are exported by default.
 

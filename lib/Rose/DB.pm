@@ -16,7 +16,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.0152';
+our $VERSION = '0.0153';
 
 our $Debug = 0;
 
@@ -1158,7 +1158,7 @@ class, then a left-most, breadth-first search of the parent classes is
 initiated.  The value returned is taken from first parent class 
 encountered that has ever had this attribute set.
 
-(These attributes use the C<inheritable_scalar> method type as defined in C<Rose::Class::MakeMethods::Generic>.)
+(These attributes use the C<inheritable_scalar> method type as defined in L<Rose::Class::MakeMethods::Generic>.)
 
 =item B<driver_class>, B<default_connect_options>
 
@@ -1168,7 +1168,7 @@ The superclass from which the hash is copied is the closest ("least super") clas
 
 Setting to hash to undef (using the 'reset' interface) will cause it to be re-copied from a superclass the next time it is accessed.
 
-(These attributes use the C<inheritable_hash> method type as defined in C<Rose::Class::MakeMethods::Generic>.)
+(These attributes use the C<inheritable_hash> method type as defined in L<Rose::Class::MakeMethods::Generic>.)
 
 =item B<alias_db>, B<modify_db>, B<register_db>, B<unregister_db>, B<unregister_domain>
 
@@ -1287,9 +1287,9 @@ Note that the data source registry serves as an I<initial> source of information
 
 =item B<registry [REGISTRY]>
 
-Get or set the C<Rose::DB::Registry>-derived object that manages and stores the data source registry.  It defaults to an "empty" C<Rose::DB::Registry> object.  Remember that setting a new registry will replace the existing registry and all the data sources registered in it.
+Get or set the L<Rose::DB::Registry>-derived object that manages and stores the data source registry.  It defaults to an "empty" L<Rose::DB::Registry> object.  Remember that setting a new registry will replace the existing registry and all the data sources registered in it.
 
-See the C<Rose::DB::Registry> for more information.
+See the L<Rose::DB::Registry> for more information.
 
 =item B<unregister_db PARAMS>
 
@@ -1353,13 +1353,13 @@ Attempt to start a transaction by calling the C<begin_work()> method on the C<DB
 
 If necessary, the database handle will be constructed and connected to the current data source.  If this fails, undef is returned.  If there is no registered data source for the current C<type> and C<domain>, a fatal error will occur.
 
-If the "AutoCommit" database handle attribute is false, the handle is assumed to already be in a transaction and C<Rose::DB::Constants::IN_TRANSACTION> (-1) is returned.  If the call to C<DBI>'s C<begin_work()> method succeeds, 1 is returned.  If it fails, undef is returned.
+If the "AutoCommit" database handle attribute is false, the handle is assumed to already be in a transaction and L<Rose::DB::Constants::IN_TRANSACTION> (-1) is returned.  If the call to C<DBI>'s C<begin_work()> method succeeds, 1 is returned.  If it fails, undef is returned.
 
 =item B<commit>
 
 Attempt to commit the current transaction by calling the C<commit()> method on the C<DBI> database handle.  If the C<DBI> database handle does not exist or is not connected, 0 is returned.
 
-If the "AutoCommit" database handle attribute is true, the handle is assumed to not be in a transaction and C<Rose::DB::Constants::IN_TRANSACTION> (-1) is returned.  If the call to C<DBI>'s C<commit()> method succeeds, 1 is returned.  If it fails, undef is returned.
+If the "AutoCommit" database handle attribute is true, the handle is assumed to not be in a transaction and L<Rose::DB::Constants::IN_TRANSACTION> (-1) is returned.  If the call to C<DBI>'s C<commit()> method succeeds, 1 is returned.  If it fails, undef is returned.
 
 =item B<connect>
 

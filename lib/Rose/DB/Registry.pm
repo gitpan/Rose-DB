@@ -183,9 +183,9 @@ Rose::DB::Registry - Data source registry.
 
 =head1 DESCRIPTION
 
-C<Rose::DB::Registry> objects manage information about C<Rose::DB> data sources.  Each data source has a corresponding C<Rose::DB::Registry::Entry> object that contains its information.  The registry entries are organized in a two-level namespace based on a "domain" and a "type."  See the C<Rose::DB> documentation for more information on data source domains and types.
+C<Rose::DB::Registry> objects manage information about L<Rose::DB> data sources.  Each data source has a corresponding L<Rose::DB::Registry::Entry> object that contains its information.  The registry entries are organized in a two-level namespace based on a "domain" and a "type."  See the L<Rose::DB> documentation for more information on data source domains and types.
 
-C<Rose::DB::Registry> inherits from, and follows the conventions of, C<Rose::Object>.  See the C<Rose::Object> documentation for more information.
+C<Rose::DB::Registry> inherits from, and follows the conventions of, L<Rose::Object>.  See the L<Rose::Object> documentation for more information.
 
 =head1 CONSTRUCTOR
 
@@ -204,17 +204,17 @@ name/value pairs.  Any object method is a valid parameter name.
 
 =item B<add_entries ENTRY1 [, ENTRY2, ...]>
 
-Add registry entries.  Each ENTRY must be either a C<Rose::DB::Registry::Entry>-derived object or  reference to a hash of name/value pairs.  The name/value pairs must be valid arguments for C<Rose::DB::Registry::Entry>'s constructor.
+Add registry entries.  Each ENTRY must be either a L<Rose::DB::Registry::Entry>-derived object or  reference to a hash of name/value pairs.  The name/value pairs must be valid arguments for L<Rose::DB::Registry::Entry>'s constructor.
 
-Each ENTRY must have a defined domain and type, either in the C<Rose::DB::Registry::Entry>-derived object or in the name/value pairs.  A fatal error will occur if these values are not defined.
+Each ENTRY must have a defined domain and type, either in the L<Rose::DB::Registry::Entry>-derived object or in the name/value pairs.  A fatal error will occur if these values are not defined.
 
 If a registry entry for the specified domain and type already exists, then the new entry will overwrite it.  If you want to know beforehand whether or not an entry exists under a specific domain and type, use the C<entry_exists()> method.
 
 =item B<add_entry ENTRY>
 
-Add a registry entry.  ENTRY must be either a C<Rose::DB::Registry::Entry>-derived object or a list of name/value pairs.  The name/value pairs must be valid arguments for C<Rose::DB::Registry::Entry>'s constructor.
+Add a registry entry.  ENTRY must be either a L<Rose::DB::Registry::Entry>-derived object or a list of name/value pairs.  The name/value pairs must be valid arguments for L<Rose::DB::Registry::Entry>'s constructor.
 
-The ENTRY must have a defined domain and type, either in the C<Rose::DB::Registry::Entry>-derived object or in the name/value pairs.  A fatal error will occur if these values are not defined.
+The ENTRY must have a defined domain and type, either in the L<Rose::DB::Registry::Entry>-derived object or in the name/value pairs.  A fatal error will occur if these values are not defined.
 
 If a registry entry for the specified domain and type already exists, then the new entry will overwrite it.  If you want to know beforehand whether or not an entry exists under a specific domain and type, use the C<entry_exists()> method.
 
