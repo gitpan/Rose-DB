@@ -54,3 +54,8 @@
 
     * Added Bit::Vector::Overload to the prerequisites.
     * Added links to the POD.
+
+0.0154 (06.22.2005) - John Siracusa <siracusa@mindspring.com>
+
+    * Abstracted limit-with-offset syntax.
+

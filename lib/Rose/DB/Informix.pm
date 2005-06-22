@@ -348,6 +348,8 @@ sub next_value_in_sequence
   return $id;
 }
 
+sub supports_limit_with_offset { 0 }
+
 1;
 
 __END__

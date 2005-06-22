@@ -108,6 +108,12 @@ sub format_array
   return $str;
 }
 
+# sub format_limit_with_offset
+# {
+#   #my($self, $limit, $offset) = @_;
+#   return join(', ', @_[2,1]);
+# }
+
 1;
 
 __END__

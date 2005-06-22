@@ -16,7 +16,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.0153';
+our $VERSION = '0.0154';
 
 our $Debug = 0;
 
@@ -943,6 +943,14 @@ sub next_value_in_sequence
 
 sub auto_sequence_name { return undef }
 
+sub supports_limit_with_offset { 1 }
+
+sub format_limit_with_offset
+{
+  #my($self, $limit, $offset) = @_;
+  return @_ > 2 ? "$_[1] OFFSET $_[2]" : $_[1];
+}
+
 #
 # This is both a class and an object method
 #
@@ -1097,11 +1105,11 @@ Multiplexing, fail-over, and other more complex relationships between logical da
 
 The driver type of the data source determines the functionality of all methods that do vendor-specific things (e.g., L<column value parsing and formatting|"Vendor-Specific Column Value Parsing and Formatting">).
 
-C<Rose::DB> identifies data sources using a two-level namespace made of a "domain" and a "type".  Both are arbitrary strings.  If left unspecified, the default domain and default type (accessible via C<Rose::DB>'s C<default_domain()> and C<default_type()> class methods) are assumed.
+C<Rose::DB> identifies data sources using a two-level namespace made of a "domain" and a "type".  Both are arbitrary strings.  If left unspecified, the default domain and default type (accessible via C<Rose::DB>'s L</default_domain> and L</default_type> class methods) are assumed.
 
 There are many ways to use the two-level namespace, but the most common is to use the domain to represent the current environment (e.g., "development", "staging", "production") and then use the type to identify the logical data source within that environment (e.g., "report", "main", "archive")
 
-A typical deployment scenario will set the default domain using the C<default_domain()> class method as part of the configure/install process.  Within application code, C<Rose::DB> objects can be constructed by specifying type alone:
+A typical deployment scenario will set the default domain using the L</default_domain> class method as part of the configure/install process.  Within application code, C<Rose::DB> objects can be constructed by specifying type alone:
 
     $main_db    = Rose::DB->new(type => 'main');
     $archive_db = Rose::DB->new(type => 'archive');
@@ -1143,7 +1151,7 @@ C<Rose::DB> does B<NOT> attempt to present a unified column type system, however
 
 =head2 High-Level Transaction Support
 
-Transactions may be started, committed, and rolled back in a variety of ways using the C<DBI> database handle directly.  C<Rose::DB> provides wrappers to do the same things, but with different error handling and return values.  There's also a method (C<do_transaction()>) that will execute arbitrary code within a single transaction, automatically handling rollback on failure and commit on success.
+Transactions may be started, committed, and rolled back in a variety of ways using the C<DBI> database handle directly.  C<Rose::DB> provides wrappers to do the same things, but with different error handling and return values.  There's also a method (L</do_transaction>) that will execute arbitrary code within a single transaction, automatically handling rollback on failure and commit on success.
 
 =head1 SUBCLASSING
 

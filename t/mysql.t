@@ -15,7 +15,7 @@ BEGIN
   }
   else
   {
-    Test::More->import(tests => 43);
+    Test::More->import(tests => 44);
   }
 }
 
@@ -59,6 +59,8 @@ $db = Rose::DB->new();
 ok(ref $db && $db->isa('Rose::DB'), "new()");
 
 $db->init_db_info;
+
+ok($db->supports_limit_with_offset, 'supports_limit_with_offset');
 
 my @letters = ('a' .. 'z', 'A' .. 'Z', 0 .. 9);
 my $rand;

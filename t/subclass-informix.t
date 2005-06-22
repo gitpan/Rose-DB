@@ -15,7 +15,7 @@ BEGIN
   }
   else
   {
-    Test::More->import(tests => 105);
+    Test::More->import(tests => 106);
   }
 }
 
@@ -59,6 +59,8 @@ $db = My::DB2->new();
 ok(ref $db && $db->isa('Rose::DB'), "new()");
 
 $db->init_db_info;
+
+ok(!$db->supports_limit_with_offset, 'supports_limit_with_offset');
 
 ok($db->validate_timestamp_keyword('current'), 'validate_timestamp_keyword (current)');
 ok($db->validate_timestamp_keyword('current year to second'), 'validate_timestamp_keyword (current year to second)');
