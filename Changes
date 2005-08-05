@@ -1,3 +1,7 @@
+0.021 (08.05.2005) - John Siracusa <siracusa@mindspring.com>
+
+    * Sigh.  Forgot to add the catalog attribute to registry entries.
+
 0.02 (08.05.2005) - John Siracusa <siracusa@mindspring.com>
 
     * Added more granular column types for Pg and Informix datetimes.

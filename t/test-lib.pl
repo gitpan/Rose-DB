@@ -116,6 +116,19 @@ BEGIN
     ],
   );
 
+  # Just test that the catalog attribute works.  No supported DBs use it.
+  Rose::DB->register_db(
+    domain   => 'catalog_test',
+    type     => 'catalog_test',
+    driver   => 'Pg',
+    database => 'test',
+    catalog  => 'somecatalog',
+    schema   => 'someschema',
+    host     => 'localhost',
+    username => 'postgres',
+    password => '',
+  );
+
   my @types = qw(pg pg_with_schema pg_admin mysql mysql_admin informix informix_admin);
 
   unless($Rose::DB::Object::Test::NoDefaults)

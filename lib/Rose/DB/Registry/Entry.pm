@@ -5,7 +5,7 @@ use strict;
 use Rose::Object;
 our @ISA = qw(Rose::Object);
 
-our $VERSION = '0.01';
+our $VERSION = '0.011';
 
 our $Debug = 0;
 
@@ -18,7 +18,7 @@ use Rose::Object::MakeMethods::Generic
   'scalar' =>
   [
     qw(database domain driver dsn host password port
-       server_time_zone schema type username)
+       server_time_zone schema catalog type username)
   ],
 
   'hash' =>
@@ -93,6 +93,10 @@ Constructs a C<Rose::DB::Registry::Entry> object based on PARAMS, where PARAMS a
 =item B<autocommit [VALUE]>
 
 Get or set the value of the "AutoCommit" connect option.
+
+=item B<catalog [CATALOG]>
+
+Get or set the database catalog name.  This setting is only relevant to databases that support the concept of catalogs.
 
 =item B<connect_option NAME [, VALUE]>
 

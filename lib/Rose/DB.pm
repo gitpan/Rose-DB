@@ -16,7 +16,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.02';
+our $VERSION = '0.021';
 
 our $Debug = 0;
 
@@ -1528,7 +1528,7 @@ This method should not be mixed with the C<connect_options> method in calls to C
 
 =item B<catalog [CATALOG]>
 
-Get or set the database catalog name.  This setting is only useful to databases that support the concept of catalogs.
+Get or set the database catalog name.  This setting is only relevant to databases that support the concept of catalogs.
 
 =item B<connect_options [HASHREF | PAIRS]>
 
