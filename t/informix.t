@@ -15,7 +15,7 @@ BEGIN
   }
   else
   {
-    Test::More->import(tests => 106);
+    Test::More->import(tests => 123);
   }
 }
 
@@ -62,6 +62,7 @@ $db->init_db_info;
 
 ok(!$db->supports_limit_with_offset, 'supports_limit_with_offset');
 
+ok($db->validate_timestamp_keyword('today'), 'validate_timestamp_keyword (today)');
 ok($db->validate_timestamp_keyword('current'), 'validate_timestamp_keyword (current)');
 ok($db->validate_timestamp_keyword('current year to second'), 'validate_timestamp_keyword (current year to second)');
 ok($db->validate_timestamp_keyword('current year to minute'), 'validate_timestamp_keyword (current year to minute)');
@@ -79,6 +80,7 @@ is($db->format_timestamp('current year to fraction(1)'), 'current year to fracti
 is($db->format_timestamp('current year to fraction(5)'), 'current year to fraction(5)', 'format_timestamp (current year to fraction(5))');
 is($db->format_timestamp('Foo(Bar)'), 'Foo(Bar)', 'format_timestamp (Foo(Bar))');
 
+ok($db->validate_datetime_keyword('today'), 'validate_datetime_keyword (today)');
 ok($db->validate_datetime_keyword('current year to second'), 'validate_datetime_keyword (current year to second)');
 ok($db->validate_datetime_keyword('current year to minute'), 'validate_datetime_keyword (current year to minute)');
 ok($db->validate_datetime_keyword('current year to hour'), 'validate_datetime_keyword (current year to hour)');
@@ -88,6 +90,20 @@ ok($db->validate_datetime_keyword('current'), 'validate_datetime_keyword current
 ok(!$db->validate_datetime_keyword('now'), 'validate_datetime_keyword (!now)');
 ok($db->validate_datetime_keyword('Foo(Bar)'), 'validate_datetime_keyword (Foo(Bar))');
 
+ok($db->validate_datetime_year_to_fraction_keyword('today'), 'validate_datetime_year_to_fraction_keyword (today)');
+ok($db->validate_datetime_year_to_fraction_keyword('current'), 'validate_timestamp_keyword (current)');
+ok($db->validate_datetime_year_to_fraction_keyword('current year to second'), 'validate_timestamp_keyword (current year to second)');
+ok($db->validate_datetime_year_to_fraction_keyword('current year to minute'), 'validate_timestamp_keyword (current year to minute)');
+ok($db->validate_datetime_year_to_fraction_keyword('current year to hour'), 'validate_timestamp_keyword (current year to hour)');
+ok($db->validate_datetime_year_to_fraction_keyword('current year to day'), 'validate_timestamp_keyword (current year to day)');
+ok($db->validate_datetime_year_to_fraction_keyword('current year to month'), 'validate_timestamp_keyword (current year to month)');
+ok($db->validate_datetime_year_to_fraction_keyword('current year to fraction(1)'), 'validate_timestamp_keyword (current year to fraction(1))');
+ok($db->validate_datetime_year_to_fraction_keyword('current year to fraction(5)'), 'validate_timestamp_keyword (current year to fraction(5))');
+ok(!$db->validate_datetime_year_to_fraction_keyword('current year to fraction(6)'), 'validate_timestamp_keyword (current year to fraction(6))');
+ok(!$db->validate_datetime_year_to_fraction_keyword('now'), 'validate_timestamp_keyword (!now)');
+ok($db->validate_datetime_year_to_fraction_keyword('Foo(Bar)'), 'validate_timestamp_keyword (Foo(Bar))');
+
+ok($db->validate_datetime_year_to_minute_keyword('today'), 'validate_datetime_year_to_minute_keyword (today)');
 ok($db->validate_datetime_year_to_minute_keyword('current'), 'validate_datetime_year_to_minute_keyword current');
 ok($db->validate_datetime_year_to_minute_keyword('current year to minute'), 'validate_datetime_year_to_minute_keyword current year to minute');
 ok($db->validate_datetime_year_to_minute_keyword('current year to hour'), 'validate_datetime_year_to_minute_keyword (current year to hour)');
@@ -95,6 +111,7 @@ ok($db->validate_datetime_year_to_minute_keyword('current year to day'), 'valida
 ok($db->validate_datetime_year_to_minute_keyword('current year to month'), 'validate_datetime_year_to_minute_keyword (current year to month)');
 ok($db->validate_datetime_year_to_minute_keyword('Foo(Bar)'), 'validate_datetime_year_to_minute_keyword (Foo(Bar))');
 
+ok($db->validate_datetime_year_to_second_keyword('today'), 'validate_datetime_year_to_second_keyword (today)');
 ok($db->validate_datetime_year_to_second_keyword('current'), 'validate_datetime_year_to_second_keyword current');
 ok($db->validate_datetime_year_to_second_keyword('current year to second'), 'validate_datetime_year_to_second_keyword current year to second');
 ok($db->validate_datetime_year_to_second_keyword('current year to minute'), 'validate_datetime_year_to_second_keyword current year to minute');
@@ -111,6 +128,7 @@ ok($db->validate_datetime_year_to_second_keyword('current year to day'), 'valida
 ok($db->validate_datetime_year_to_second_keyword('current year to month'), 'validate_datetime_year_to_second_keyword (current year to month)');
 is($db->format_datetime('Foo(Bar)'), 'Foo(Bar)', 'format_datetime (Foo(Bar))');
 
+ok($db->validate_date_keyword('today'), 'validate_date_keyword (today)');
 ok($db->validate_date_keyword('current'), 'validate_date_keyword current');
 ok(!$db->validate_date_keyword('now'), 'validate_date_keyword (!now)');
 

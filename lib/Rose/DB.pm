@@ -16,7 +16,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.0154';
+our $VERSION = '0.02';
 
 our $Debug = 0;
 
@@ -28,7 +28,7 @@ use Rose::Object::MakeMethods::Generic
 (
   'scalar' =>
   [
-    qw(database schema host port username password european_dates
+    qw(database schema catalog host port username password european_dates
        _dbh_refcount _origin_class)
   ],
 
@@ -175,6 +175,8 @@ LOAD_SUBCLASSES:
 sub register_db   { shift->registry->add_entry(@_)  }
 sub unregister_db { shift->registry->delete_entry(@_) }
 
+sub default_implicit_schema { undef }
+
 sub modify_db
 {
   my($class, %args) = @_;
@@ -240,7 +242,6 @@ sub unregister_domain { shift->registry->delete_domain(@_) }
 #
 # Object methods
 #
-
 
 sub new
 {
@@ -753,6 +754,31 @@ sub do_transaction
   return 1;
 }
 
+BEGIN
+{
+  sub quote_identifier_dbi
+  {
+    my($self) = shift;
+    my $dbh = $self->dbh or die $self->error;
+    return $dbh->quote_identifier(@_);
+  }
+  
+  sub quote_identifier_fallback
+  {
+    my($self, $catalog, $schema, $table) = @_;
+    return join('.', map { qq("$_") } grep { defined } ($schema, $table));
+  }
+
+  if($DBI::VERSION >= 1.21)
+  {
+    *quote_identifier = \&quote_identifier_dbi;
+  }
+  else
+  {
+    *quote_identifier = \&quote_identifier_fallback;
+  }
+}
+
 #
 # These methods could/should be overriden in driver-specific subclasses
 #
@@ -950,6 +976,27 @@ sub format_limit_with_offset
   #my($self, $limit, $offset) = @_;
   return @_ > 2 ? "$_[1] OFFSET $_[2]" : $_[1];
 }
+
+#
+# DBI introspection
+#
+
+sub refine_dbi_column_info
+{
+  my($self, $col_info) = @_;
+
+  # Parse odd default value syntaxes  
+  $col_info->{'COLUMN_DEF'} = 
+    $self->parse_dbi_column_info_default($col_info->{'COLUMN_DEF'});
+
+  # Make sure the data type name is lowercase
+  $col_info->{'TYPE_NAME'} = lc $col_info->{'TYPE_NAME'};
+
+  return;
+}
+
+
+sub parse_dbi_column_info_default { $_[1] }
 
 #
 # This is both a class and an object method
@@ -1478,6 +1525,10 @@ Not all databases will use all of these values.  Values that are not supported a
 Get or set the value of the "AutoCommit" connect option and C<DBI> handle attribute.  If a VALUE is passed, it will be set in both the connect options hash and the current database handle, if any.  Returns the value of the "AutoCommit" attribute of the database handle if it exists, or the connect option otherwise.
 
 This method should not be mixed with the C<connect_options> method in calls to C<register_db()> or C<modify_db()> since C<connect_options> will overwrite I<all> the connect options with its argument, and neither C<register_db()> nor C<modify_db()> guarantee the order that its parameters will be evaluated.
+
+=item B<catalog [CATALOG]>
+
+Get or set the database catalog name.  This setting is only useful to databases that support the concept of catalogs.
 
 =item B<connect_options [HASHREF | PAIRS]>
 

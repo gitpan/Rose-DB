@@ -7,7 +7,7 @@ use DateTime::Format::Pg;
 use Rose::DB;
 our @ISA = qw(Rose::DB);
 
-our $VERSION = '0.011';
+our $VERSION = '0.02';
 
 our $Debug = 0;
 
@@ -42,6 +42,8 @@ sub init_date_handler
 
   return $parser;
 }
+
+sub default_implicit_schema { 'public' }
 
 sub insertid_param { 'unsupported' }
 sub null_date      { '0000-00-00'  }
@@ -199,6 +201,76 @@ sub auto_sequence_name
   Carp::croak "Missing column argument"  unless(defined $column);
 
   return "${table}_${column}_seq";
+}
+
+#
+# DBI introspection
+#
+
+sub refine_dbi_column_info
+{
+  my($self, $col_info) = @_;
+  
+  $self->SUPER::refine_dbi_column_info($col_info);
+
+  # Pg has some odd names for types.  Convert them to standard forms.
+  if($col_info->{'TYPE_NAME'} eq 'character varying')
+  {
+    $col_info->{'TYPE_NAME'} = 'varchar';
+  }
+  elsif($col_info->{'TYPE_NAME'} eq 'bit')
+  {
+    $col_info->{'TYPE_NAME'} = 'bits';
+  }
+
+  # Pg does not populate COLUMN_SIZE correctly for bit fields, so
+  # we have to extract the number of bits from pg_type.
+  if($col_info->{'pg_type'} =~ /^bit\((\d+)\)$/)
+  {
+    $col_info->{'COLUMN_SIZE'} = $1;
+  }
+
+  # We currently treat all arrays the same, regardless of what they are 
+  # arrays of: integer, character, float, etc.  So we covert TYPE_NAMEs
+  # like 'integer[]' into 'array'
+  if($col_info->{'TYPE_NAME'} =~ /^\w.*\[\]$/)
+  {
+    $col_info->{'TYPE_NAME'} = 'array';
+  }
+
+  return;
+}
+
+sub parse_dbi_column_info_default 
+{
+  my($self, $string) = @_;
+
+  UNDEF_OK: # Avoid undef string warnings
+  {
+    no warnings;
+    local $_ = $string;
+
+    # Example: q('value'::character varying)
+    # Single quotes are backslash-escaped.
+    if(/^'((?:[^\\.']+|\\.)*)'::[\w ]+$/)
+    {
+      my $default = $1;
+      $default =~ s/\\'/'/g;
+      return $default;
+    }
+    # Example: q(B'00101'::"bit")
+    elsif(/^B'([01]+)'::(?:bit|"bit")$/)
+    {
+      return $1;
+    }
+    # Handle sequence-based defaults elsewhere (if at all)
+    elsif(/^nextval\(/)
+    {
+      return undef;
+    }
+  }
+
+  return $string;
 }
 
 1;

@@ -15,6 +15,7 @@ t/informix.t
 t/make-subclass-tests.pl
 t/mysql.t
 t/pg.t
+t/pod.t
 t/subclass-basic.t
 t/subclass-informix.t
 t/subclass-mysql.t

@@ -7,7 +7,7 @@ use Rose::DateTime::Util();
 use Rose::DB;
 our @ISA = qw(Rose::DB);
 
-our $VERSION = '0.012';
+our $VERSION = '0.02';
 
 our $Debug = 0;
 
@@ -97,6 +97,22 @@ sub format_timestamp
   return Rose::DateTime::Util::format_date($_[1], '%Y-%m-%d %H:%M:%S.%5N');
 }
 
+sub format_datetime_year_to_fraction
+{
+  my($self, $dt, $fraction) = @_;
+
+  $fraction ||= 3;
+
+  return $dt  if($self->validate_datetime_year_to_fraction_keyword($dt));
+  return Rose::DateTime::Util::format_date($dt, "%Y-%m-%d %H:%M:%S.%${fraction}N");
+}
+
+sub format_datetime_year_to_fraction_1 { format_datetime_year_to_fraction(@_, 1) }
+sub format_datetime_year_to_fraction_2 { format_datetime_year_to_fraction(@_, 2) }
+sub format_datetime_year_to_fraction_3 { format_datetime_year_to_fraction(@_, 3) }
+sub format_datetime_year_to_fraction_4 { format_datetime_year_to_fraction(@_, 4) }
+sub format_datetime_year_to_fraction_5 { format_datetime_year_to_fraction(@_, 5) }
+
 # Date parsing
 
 sub parse_date
@@ -145,6 +161,45 @@ sub parse_datetime_year_to_second
   return $dt;
 }
 
+sub parse_datetime_year_to_fraction
+{
+  my($self, $arg, $fraction) = @_;
+
+  return $arg  if($self->validate_datetime_year_to_fraction_keyword($arg));
+
+  $fraction ||= 3;
+
+  my $dt = Rose::DateTime::Util::parse_date($arg);
+
+  if($@)
+  {
+    $self->error("Could not parse datetime year to second '$arg' - $@");
+    return undef;
+  }
+
+  if(ref $dt)
+  {
+    # Truncate nanosecs to correct fraction. (Yes, using strings. I am lame.)
+    my $n = sprintf('%09d', $dt->nanosecond);
+    $n = substr($n, 0, $fraction);
+
+    if(length $n < 9)
+    {
+      $n .= ('0' x (9 - length $n));
+    }
+
+    $dt->set_nanosecond($n);
+  }
+
+  return $dt;
+}
+
+*parse_datetime_year_to_fraction_1 = sub { parse_datetime_year_to_fraction(@_, 1) };
+*parse_datetime_year_to_fraction_2 = sub { parse_datetime_year_to_fraction(@_, 2) };
+*parse_datetime_year_to_fraction_3 = sub { parse_datetime_year_to_fraction(@_, 3) };
+*parse_datetime_year_to_fraction_4 = sub { parse_datetime_year_to_fraction(@_, 4) };
+*parse_datetime_year_to_fraction_5 = sub { parse_datetime_year_to_fraction(@_, 5) };
+
 sub parse_datetime_year_to_minute
 {
   return $_[1]  if($_[0]->validate_datetime_keyword($_[1]));
@@ -180,7 +235,7 @@ sub parse_timestamp
 sub validate_date_keyword
 {
   no warnings;
-  $_[1] =~ /^(?:current|\w+\(.*\))$/i;
+  $_[1] =~ /^(?:current|today|\w+\(.*\))$/i;
 }
 
 sub validate_time_keyword
@@ -192,25 +247,31 @@ sub validate_time_keyword
 sub validate_timestamp_keyword
 {
   no warnings;
-  $_[1] =~ /^(?:current(?: +year +to +(?:fraction(?:\([1-5]\))?|second|minute|hour|day|month))?|\w+\(.*\))$/i;
+  $_[1] =~ /^(?:current(?: +year +to +(?:fraction(?:\([1-5]\))?|second|minute|hour|day|month))?|today|\w+\(.*\))$/i;
+}
+
+sub validate_datetime_year_to_fraction_keyword
+{
+  no warnings;
+  $_[1] =~ /^(?:current(?: +year +to +(?:fraction(?:\([1-5]\))?|second|minute|hour|day|month))?|today|\w+\(.*\))$/i;
 }
 
 sub validate_datetime_keyword
 {
   no warnings;
-  $_[1] =~ /^(?:current(?: +year +to +(?:second|minute|hour|day|month))?|\w+\(.*\))$/i;
+  $_[1] =~ /^(?:current(?: +year +to +(?:second|minute|hour|day|month))?|today|\w+\(.*\))$/i;
 }
 
 sub validate_datetime_year_to_second_keyword
 {
   no warnings;
-  $_[1] =~ /^(?:current(?: +year +to +(?:second|minute|hour|day|month))?|\w+\(.*\))$/i;
+  $_[1] =~ /^(?:current(?: +year +to +(?:second|minute|hour|day|month))?|today|\w+\(.*\))$/i;
 }
 
 sub validate_datetime_year_to_minute_keyword
 {
   no warnings;
-  $_[1] =~ /^(?:current(?: +year +to +(?:minute|hour|day|month))?|\w+\(.*\))$/i;
+  $_[1] =~ /^(?:current(?: +year +to +(?:minute|hour|day|month))?|today|\w+\(.*\))$/i;
 }
 
 sub parse_set
@@ -432,6 +493,14 @@ Converts the C<DateTime> object DATETIME into the appropriate format for the "DA
 
 Converts the C<DateTime> object DATETIME into the appropriate format for the "DATETIME YEAR TO SECOND" data type.
 
+=item B<format_datetime_year_to_fraction DATETIME>
+
+Converts the C<DateTime> object DATETIME into the appropriate format for the "DATETIME YEAR TO FRACTION" data type.
+
+=item B<format_datetime_year_to_fraction_[1-5] DATETIME>
+
+Converts the C<DateTime> object DATETIME into the appropriate format for the "DATETIME YEAR TO FRACTION(N)" data type, where N is an integer from 1 to 5.
+
 =item B<format_datetime_year_to_minute DATETIME>
 
 Converts the C<DateTime> object DATETIME into the appropriate format for the "DATETIME YEAR TO MINUTE" data type.
@@ -468,6 +537,18 @@ Parse STRING and return a C<DateTime> object.  STRING should be formatted accord
 
 If STRING is a valid "datetime year to second" keyword (according to C<validate_datetime_year_to_second_keyword()>) it is returned unmodified.  Returns undef if STRING could not be parsed as a valid "DATETIME YEAR TO SECOND" value.
 
+=item B<parse_datetime_year_to_fraction STRING>
+
+Parse STRING and return a C<DateTime> object.  STRING should be formatted according to the Informix "DATETIME YEAR TO FRACTION" data type.
+
+If STRING is a valid "datetime year to fraction" keyword (according to C<validate_datetime_year_to_fraction_keyword()>) it is returned unmodified.  Returns undef if STRING could not be parsed as a valid "DATETIME YEAR TO FRACTION" value.
+
+=item B<parse_datetime_year_to_fraction_[1-5] STRING>
+
+These five methods parse STRING and return a C<DateTime> object.  STRING should be formatted according to the Informix "DATETIME YEAR TO FRACTION(N)" data type, where N is an integer from 1 to 5.
+
+If STRING is a valid "datetime year to fraction" keyword (according to C<validate_datetime_year_to_fraction_keyword()>) it is returned unmodified.  Returns undef if STRING could not be parsed as a valid "DATETIME YEAR TO FRACTION(N)" value.
+
 =item B<parse_datetime_year_to_minute STRING>
 
 Parse STRING and return a C<DateTime> object.  STRING should be formatted according to the Informix "DATETIME YEAR TO MINUTE" data type.
@@ -499,6 +580,7 @@ If STRING is a valid timestamp keyword (according to C<validate_timestamp_keywor
 Returns true if STRING is a valid keyword for the Informix "date", false otherwise.   Valid date keywords are:
 
     current
+    today
 
 The keywords are not case sensitive.  Any string that looks like a function call (matches /^\w+\(.*\)$/) is also considered a valid date keyword.
 
@@ -512,8 +594,29 @@ Returns true if STRING is a valid keyword for the Informix "datetime year to sec
     current year to hour
     current year to day
     current year to month
+    today
 
 The keywords are not case sensitive.  Any string that looks like a function call (matches /^\w+\(.*\)$/) is also considered a valid datetime keyword.
+
+=item B<validate_datetime_year_to_fraction_keyword STRING>
+
+Returns true if STRING is a valid keyword for the Informix "datetime year to fraction(n)" data type (where n is an integer from 1 to 5), false otherwise.  Valid "datetime year to fraction" keywords are:
+
+    current
+    current year to fraction
+    current year to fraction(1)
+    current year to fraction(2)
+    current year to fraction(3)
+    current year to fraction(4)
+    current year to fraction(5)
+    current year to second
+    current year to minute
+    current year to hour
+    current year to day
+    current year to month
+    today
+
+The keywords are not case sensitive.  Any string that looks like a function call (matches /^\w+\(.*\)$/) is also considered a valid "datetime year to fraction" keyword.
 
 =item B<validate_datetime_year_to_minute_keyword STRING>
 
@@ -524,6 +627,7 @@ Returns true if STRING is a valid keyword for the Informix "datetime year to min
     current year to hour
     current year to day
     current year to month
+    today
 
 The keywords are not case sensitive.  Any string that looks like a function call (matches /^\w+\(.*\)$/) is also considered a valid "datetime year to minute" keyword.
 
@@ -537,6 +641,7 @@ Returns true if STRING is a valid keyword for the Informix "datetime year to sec
     current year to hour
     current year to day
     current year to month
+    today
 
 The keywords are not case sensitive.  Any string that looks like a function call (matches /^\w+\(.*\)$/) is also considered a valid "datetime year to second" keyword.
 
@@ -556,6 +661,7 @@ Returns true if STRING is a valid keyword for the Informix "timestamp" data type
     current year to hour
     current year to day
     current year to month
+    today
 
 The keywords are not case sensitive.  Any string that looks like a function call (matches /^\w+\(.*\)$/) is also considered a valid timestamp keyword.
 

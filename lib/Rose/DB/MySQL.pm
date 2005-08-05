@@ -9,7 +9,7 @@ use DateTime::Format::MySQL;
 use Rose::DB;
 our @ISA = qw(Rose::DB);
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 our $Debug = 0;
 
@@ -113,6 +113,32 @@ sub format_array
 #   #my($self, $limit, $offset) = @_;
 #   return join(', ', @_[2,1]);
 # }
+
+sub refine_dbi_column_info
+{
+  my($self, $col_info) = @_;
+  
+  $self->SUPER::refine_dbi_column_info($col_info);
+
+  if($col_info->{'TYPE_NAME'} eq 'timestamp')
+  {
+    if($col_info->{'COLUMN_DEF'} eq '0000-00-00 00:00:00')
+    {
+      # MySQL uses strange "all zeros" default values for timestamp fields.
+      # We'll just ignore them, since MySQL will use them internally no
+      # matter what we do.
+      $col_info->{'COLUMN_DEF'} = undef;
+    }
+    elsif($col_info->{'COLUMN_DEF'} eq 'CURRENT_TIMESTAMP')
+    {
+      # Translate "current time" value into something that our date parser
+      # will understand.
+      $col_info->{'COLUMN_DEF'} = 'now';
+    }
+  }
+
+  return;
+}
 
 1;
 
