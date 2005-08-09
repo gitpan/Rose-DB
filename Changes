@@ -1,3 +1,7 @@
+0.022 (08.09.2005) - John Siracusa <siracusa@mindspring.com>
+
+    * Fixed Postgres column default value parsing.
+
 0.021 (08.05.2005) - John Siracusa <siracusa@mindspring.com>
 
     * Sigh.  Forgot to add the catalog attribute to registry entries.

@@ -7,7 +7,7 @@ use DateTime::Format::Pg;
 use Rose::DB;
 our @ISA = qw(Rose::DB);
 
-our $VERSION = '0.02';
+our $VERSION = '0.021';
 
 our $Debug = 0;
 
@@ -252,7 +252,7 @@ sub parse_dbi_column_info_default
 
     # Example: q('value'::character varying)
     # Single quotes are backslash-escaped.
-    if(/^'((?:[^\\.']+|\\.)*)'::[\w ]+$/)
+    if(/^'((?:[^\\']+|\\.)*)'::[\w ]+$/)
     {
       my $default = $1;
       $default =~ s/\\'/'/g;
