@@ -1,3 +1,7 @@
+0.023 (08.09.2005) - John Siracusa <siracusa@mindspring.com>
+
+    * Delete stray ._ files.  Blah.
+
 0.022 (08.09.2005) - John Siracusa <siracusa@mindspring.com>
 
     * Fixed Postgres column default value parsing.

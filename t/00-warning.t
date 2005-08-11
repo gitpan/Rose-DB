@@ -10,7 +10,7 @@ print STDERR<<"EOF";
 ## WARNING: Almost all the tests in this module distribution need to connect
 ## to a database in order to run.  The tests need full privileges on this
 ## database: the ability to create and drop tables, insert, update, and delete
-## rows, create schemeas, sequences, functions, triggers, the works.
+## rows, create schemas, sequences, functions, triggers, the works.
 ## 
 ## By default, the tests will try to connect to the database named "test"
 ## running on "localhost" using the default superuser username for each
