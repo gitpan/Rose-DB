@@ -409,7 +409,21 @@ sub next_value_in_sequence
   return $id;
 }
 
-sub supports_limit_with_offset { 0 }
+sub supports_limit_with_offset
+{
+  my($self) = shift;
+  
+  my $dbh = $self->dbh or return 0;
+  #print STDERR "INFORMIX VERSION = $dbh->{ix_ProductVersion}\n";  
+  return $dbh->{'ix_ProductVersion'} >= 1000 ? 1 : 0;
+  return 0;
+}
+
+sub format_limit_with_offset
+{
+  #my($self, $limit, $offset) = @_;
+  return @_ > 2 ? "SKIP $_[2] LIMIT $_[1]" : "FIRST $_[1]";
+}
 
 1;
 

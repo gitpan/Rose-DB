@@ -7,7 +7,7 @@ use DateTime::Format::Pg;
 use Rose::DB;
 our @ISA = qw(Rose::DB);
 
-our $VERSION = '0.021';
+our $VERSION = '0.022';
 
 our $Debug = 0;
 
@@ -180,7 +180,7 @@ sub next_value_in_sequence
     $sth->execute($seq);
     $id = ${$sth->fetchrow_arrayref}[0];
   };
-  
+
   if($@)
   {
     $self->error("Could not get the next value in the sequence '$seq' - $@");
@@ -200,7 +200,7 @@ sub auto_sequence_name
   my $column = $args{'column'};
   Carp::croak "Missing column argument"  unless(defined $column);
 
-  return "${table}_${column}_seq";
+  return "\L${table}_${column}_seq";
 }
 
 #
