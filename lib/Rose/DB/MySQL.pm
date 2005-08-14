@@ -9,7 +9,7 @@ use DateTime::Format::MySQL;
 use Rose::DB;
 our @ISA = qw(Rose::DB);
 
-our $VERSION = '0.02';
+our $VERSION = '0.021';
 
 our $Debug = 0;
 
@@ -120,9 +120,10 @@ sub refine_dbi_column_info
   
   $self->SUPER::refine_dbi_column_info($col_info);
 
-  if($col_info->{'TYPE_NAME'} eq 'timestamp')
+  if($col_info->{'TYPE_NAME'} eq 'timestamp' && defined $col_info->{'COLUMN_DEF'})
   {
-    if($col_info->{'COLUMN_DEF'} eq '0000-00-00 00:00:00')
+    if($col_info->{'COLUMN_DEF'} eq '0000-00-00 00:00:00' || 
+       $col_info->{'COLUMN_DEF'} eq '00000000000000')
     {
       # MySQL uses strange "all zeros" default values for timestamp fields.
       # We'll just ignore them, since MySQL will use them internally no

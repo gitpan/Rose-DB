@@ -1,3 +1,7 @@
+0.025 (08.14.2005) - John Siracusa <siracusa@mindspring.com>
+
+    * Fixed support for "all zeros" timestamp defaults in MySQL auto-init.
+
 0.024 (08.12.2005) - John Siracusa <siracusa@mindspring.com>
 
     * Case-sensitivity fixes for Postgres.
