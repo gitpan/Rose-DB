@@ -1,3 +1,7 @@
+0.026 (08.19.2005) - John Siracusa <siracusa@mindspring.com>
+
+    * Added quote_column_name() method.
+
 0.025 (08.14.2005) - John Siracusa <siracusa@mindspring.com>
 
     * Fixed support for "all zeros" timestamp defaults in MySQL auto-init.

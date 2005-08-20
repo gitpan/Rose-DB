@@ -9,7 +9,7 @@ use DateTime::Format::MySQL;
 use Rose::DB;
 our @ISA = qw(Rose::DB);
 
-our $VERSION = '0.021';
+our $VERSION = '0.022';
 
 our $Debug = 0;
 
@@ -39,6 +39,8 @@ sub build_dsn
     join(';', map { "$_=$info{$_}" } grep { defined $info{$_} }
               qw(database host port));
 }
+
+sub quote_column_name { qq(`$_[1]`) }
 
 sub init_date_handler { DateTime::Format::MySQL->new }
 
@@ -97,7 +99,7 @@ sub format_array
       qq("$_") 
     }
   } @array) . '}';
-  
+
   if(length($str) > $self->max_array_characters)
   {
     Carp::croak "Array string is longer than ", ref($self), 
@@ -117,7 +119,7 @@ sub format_array
 sub refine_dbi_column_info
 {
   my($self, $col_info) = @_;
-  
+
   $self->SUPER::refine_dbi_column_info($col_info);
 
   if($col_info->{'TYPE_NAME'} eq 'timestamp' && defined $col_info->{'COLUMN_DEF'})
