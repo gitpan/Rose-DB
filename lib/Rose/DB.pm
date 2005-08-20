@@ -16,7 +16,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.026';
+our $VERSION = '0.0261';
 
 our $Debug = 0;
 
@@ -1130,13 +1130,13 @@ L<Rose::DB> currently supports the following L<DBI> database drivers:
 
 Support for more drivers may be added in the future.  Patches are welcome (provided they also patch the test suite, of course).
 
-All database-specific behavior is contained and documented in the subclasses of L<Rose::DB>.  L<Rose::DB>'s constructor method (L<new()|new>) returns  a database-specific subclass of L<Rose::DB>, chosen based on the L<driver> value of the selected L<data source|"Data Source Abstraction">.  The default mapping of databases to L<Rose::DB> subclasses is:
+All database-specific behavior is contained and documented in the subclasses of L<Rose::DB>.  L<Rose::DB>'s constructor method (L<new()|/new>) returns  a database-specific subclass of L<Rose::DB>, chosen based on the L<driver|/driver> value of the selected L<data source|"Data Source Abstraction">.  The default mapping of databases to L<Rose::DB> subclasses is:
 
     DBD::Pg       -> Rose::DB::Pg      
     DBD::mysql    -> Rose::DB::MySQL   
     DBD::Informix -> Rose::DB::Informix
 
-This mapping can be changed using the L<driver_class> class method.
+This mapping can be changed using the L<driver_class|/driver_class> class method.
 
 The L<Rose::DB> object method documentation found here defines the purpose of each method, as well as the default behavior of the method if it is not overridden by a subclass.  You must read the subclass documentation to learn about behaviors that are specific to each type of database.
 
@@ -1183,7 +1183,7 @@ In the simplest case, L<Rose::DB> could be used for its data source abstractions
     $aux_dbh  = Rose::DB->new(type => 'aux')->retain_dbh  
                   or die Rose::DB->error;
 
-If the database handle was simply extracted via the L<dbh> method instead of retained with L<retain_dbh>, it would be disconnected by the time the statement completed.
+If the database handle was simply extracted via the L<dbh|/dbh> method instead of retained with L<retain_dbh|/retain_dbh>, it would be disconnected by the time the statement completed.
 
     # WRONG: $dbh will be disconnected immediately after the assignment!
     $dbh = Rose::DB->new(type => 'main')->dbh or die Rose::DB->error;
@@ -1244,11 +1244,11 @@ Make one data source an alias for another by pointing them both to the same regi
     Rose::DB->alias_db(source => { domain => 'dev', type => 'main' },
                        alias  => { domain => 'dev', type => 'aux' });
 
-This makes the "dev/aux" data source point to the same registry entry as the "dev/main" data source.  Modifications to either registry entry (via L<modify_db>) will be reflected in both.
+This makes the "dev/aux" data source point to the same registry entry as the "dev/main" data source.  Modifications to either registry entry (via L<modify_db|/modify_db>) will be reflected in both.
 
 =item B<db_exists PARAMS>
 
-Returns true of the data source specified by PARAMS is registered, false otherwise.  PARAMS are name/value pairs for C<domain> and C<type>.  If they are omitted, they default to L<default_domain> and L<default_type>, respectively.  If default values do not exist, a fatal error will occur.  If a single value is passed instead of name/value pairs, it is taken as the value of the C<type> parameter.
+Returns true of the data source specified by PARAMS is registered, false otherwise.  PARAMS are name/value pairs for C<domain> and C<type>.  If they are omitted, they default to L<default_domain|/default_domain> and L<default_type|/default_type>, respectively.  If default values do not exist, a fatal error will occur.  If a single value is passed instead of name/value pairs, it is taken as the value of the C<type> parameter.
 
 =item B<default_connect_options [HASHREF | PAIRS]>
 
@@ -1262,7 +1262,7 @@ The default set of default connect options is:
     ChopBlanks => 1,
     Warn       => 0,
 
-See the L<connect_options> object method for more information on how the default connect options are used.
+See the L<connect_options|/connect_options> object method for more information on how the default connect options are used.
 
 =item B<default_domain [DOMAIN]>
 
@@ -1279,7 +1279,7 @@ Get or set the subclass used for DRIVER.
     $class = Rose::DB->driver_class('Pg');      # get
     Rose::DB->driver_class('Pg' => 'MyDB::Pg'); # set
 
-See the documentation for the L<new> method for more information on how the driver influences the class of objects returned by the constructor.
+See the documentation for the L<new|/new> method for more information on how the driver influences the class of objects returned by the constructor.
 
 =item B<modify_db PARAMS>
 
@@ -1292,7 +1292,7 @@ PARAMS are name/value pairs.  Any L<Rose::DB> object method that sets a L<data s
                         username => 'tester');
 
 
-PARAMS should include values for both the C<type> and C<domain> parameters since these two attributes are used to identify the data source.  If they are omitted, they default to L<default_domain> and L<default_type>, respectively.  If default values do not exist, a fatal error will occur.  If there is no data source defined for the specified C<type> and C<domain>, a fatal error will occur.
+PARAMS should include values for both the C<type> and C<domain> parameters since these two attributes are used to identify the data source.  If they are omitted, they default to L<default_domain|/default_domain> and L<default_type|/default_type>, respectively.  If default values do not exist, a fatal error will occur.  If there is no data source defined for the specified C<type> and C<domain>, a fatal error will occur.
 
 =item B<register_db PARAMS>
 
@@ -1303,9 +1303,9 @@ PARAMS B<must> include values for the C<type>, C<domain>, and C<driver> paramete
 
 The C<type> and C<domain> are used to identify the data source.  If either one is missing, a fatal error will occur.  See the L<"Data Source Abstraction"> section for more information on data source types and domains.
 
-The C<driver> is used to determine which class objects will be blessed into by the L<Rose::DB> constructor, L<new>.  If it is missing, a fatal error will occur.
+The C<driver> is used to determine which class objects will be blessed into by the L<Rose::DB> constructor, L<new|/new>.  If it is missing, a fatal error will occur.
 
-In most deployment scenarios, L<register_db> is called early in the compilation process to ensure that the registered data sources are available when the "real" code runs.
+In most deployment scenarios, L<register_db|/register_db> is called early in the compilation process to ensure that the registered data sources are available when the "real" code runs.
 
 Database registration is often consolidated to a single module which is then C<use>ed at the start of the code.  For example, imagine a mod_perl web server environment:
 
@@ -1379,16 +1379,16 @@ name/value pairs.  Any object method is a valid parameter name.  Example:
 
     $db = Rose::DB->new(type => 'main', domain => 'qa');
 
-If a single argument is passed to L<new>, it is used as the C<type> value:
+If a single argument is passed to L<new|/new>, it is used as the C<type> value:
 
     $db = Rose::DB->new(type => 'aux'); 
     $db = Rose::DB->new('aux'); # same thing
 
 Each L<Rose::DB> object is associated with a particular data source, defined by the C<type> and C<domain> values.  If these are not part of PARAMS, then the default values are used.  If you do not want to use the default values for the C<type> and C<domain> attributes, you should specify them in the constructor PARAMS.
 
-The default C<type> and C<domain> can be set using the L<default_type> and L<default_domain> class methods.  See the L<"Data Source Abstraction"> section for more information on data sources.
+The default C<type> and C<domain> can be set using the L<default_type|/default_type> and L<default_domain|/default_domain> class methods.  See the L<"Data Source Abstraction"> section for more information on data sources.
 
-The object returned by L<new> will be a database-specific subclass of L<Rose::DB>, chosen based on the L<driver> value of the selected data source.  If there is no registered data source for the specified C<type> and C<domain>, or if a fatal error will occur.
+The object returned by L<new|/new> will be a database-specific subclass of L<Rose::DB>, chosen based on the L<driver|/driver> value of the selected data source.  If there is no registered data source for the specified C<type> and C<domain>, or if a fatal error will occur.
 
 The default driver-to-class mapping is as follows:
 
@@ -1396,7 +1396,7 @@ The default driver-to-class mapping is as follows:
     mysql    -> Rose::DB::MySQL
     Informix -> Rose::DB::Informix
 
-You can change this mapping with the L<driver_class> class method.
+You can change this mapping with the L<driver_class|/driver_class> class method.
 
 =back
 
@@ -1420,11 +1420,11 @@ If the "AutoCommit" database handle attribute is true, the handle is assumed to 
 
 =item B<connect>
 
-Constructs and connects the L<DBI> database handle for the current data source.  If there is no registered data source for the current L<type> and L<domain>, a fatal error will occur.
+Constructs and connects the L<DBI> database handle for the current data source.  If there is no registered data source for the current L<type|/type> and L<domain|/domain>, a fatal error will occur.
 
-If any L<post_connect_sql> statement failed to execute, the database handle is disconnected and then discarded.
+If any L<post_connect_sql|/post_connect_sql> statement failed to execute, the database handle is disconnected and then discarded.
 
-Returns true if the database handle was connected successfully and all L<post_connect_sql> statements (if any) were run successfully, false otherwise.  
+Returns true if the database handle was connected successfully and all L<post_connect_sql|/post_connect_sql> statements (if any) were run successfully, false otherwise.  
 
 =item B<connect_option NAME [, VALUE]>
 
@@ -1449,15 +1449,15 @@ Returns undef if the database handle could not be constructed and connected.  If
 
 =item B<disconnect>
 
-Decrements the reference count for the database handle and disconnects it if the reference count is zero.  Regardless of the reference count, it sets the L<dbh> attribute to undef.
+Decrements the reference count for the database handle and disconnects it if the reference count is zero.  Regardless of the reference count, it sets the L<dbh|/dbh> attribute to undef.
 
-Returns true if all L<pre_disconnect_sql> statements (if any) were run successfully and the database handle was disconnected successfully (or if it was simply set to undef), false otherwise.
+Returns true if all L<pre_disconnect_sql|/pre_disconnect_sql> statements (if any) were run successfully and the database handle was disconnected successfully (or if it was simply set to undef), false otherwise.
 
-The database handle will not be disconnected if any L<pre_disconnect_sql> statement fails to execute, and the L<pre_disconnect_sql> is not run unless the handle is going to be disconnected.
+The database handle will not be disconnected if any L<pre_disconnect_sql|/pre_disconnect_sql> statement fails to execute, and the L<pre_disconnect_sql|/pre_disconnect_sql> is not run unless the handle is going to be disconnected.
 
 =item B<do_transaction CODE [, ARGS]>
 
-Execute arbitrary code within a single transaction, rolling back if any of the code fails, committing if it succeeds.  CODE should be a code reference.  It will be called with any arguments passed to L<do_transaction> after the code reference.  Example:
+Execute arbitrary code within a single transaction, rolling back if any of the code fails, committing if it succeeds.  CODE should be a code reference.  It will be called with any arguments passed to L<do_transaction|/do_transaction> after the code reference.  Example:
 
     # Transfer $100 from account id 5 to account id 9
     $db->do_transaction(sub
@@ -1478,7 +1478,7 @@ Get or set the error message associated with the last failure.  If a method fail
 
 =item B<init_db_info>
 
-Initialize data source configuration information based on the current values of the L<type> and L<domain> attributes by pulling data from the corresponding registry entry.  If there is no registered data source for the current L<type> and L<domain>, a fatal error will occur.  L<init_db_info> is called as part of the L<new> and L<connect> methods.
+Initialize data source configuration information based on the current values of the L<type|/type> and L<domain|/domain> attributes by pulling data from the corresponding registry entry.  If there is no registered data source for the current L<type|/type> and L<domain|/domain>, a fatal error will occur.  L<init_db_info|/init_db_info> is called as part of the L<new|/new> and L<connect|/connect> methods.
 
 =item B<insertid_param>
 
@@ -1496,11 +1496,11 @@ Returns the column name NAME appropriately quoted for use in an SQL statement.  
 
 Decrements the reference count for the L<DBI> database handle, if it exists.  Returns 0 if the database handle does not exist.
 
-If the reference count drops to zero, the database handle is disconnected.  Keep in mind that the L<Rose::DB> object itself will increment the reference count when the database handle is connected, and decrement it when L<disconnect> is called.
+If the reference count drops to zero, the database handle is disconnected.  Keep in mind that the L<Rose::DB> object itself will increment the reference count when the database handle is connected, and decrement it when L<disconnect|/disconnect> is called.
 
-Returns true if the reference count is not 0 or if all L<pre_disconnect_sql> statements (if any) were run successfully and the database handle was disconnected successfully, false otherwise.
+Returns true if the reference count is not 0 or if all L<pre_disconnect_sql|/pre_disconnect_sql> statements (if any) were run successfully and the database handle was disconnected successfully, false otherwise.
 
-The database handle will not be disconnected if any L<pre_disconnect_sql> statement fails to execute, and the L<pre_disconnect_sql> is not run unless the handle is going to be disconnected.
+The database handle will not be disconnected if any L<pre_disconnect_sql|/pre_disconnect_sql> statement fails to execute, and the L<pre_disconnect_sql|/pre_disconnect_sql> is not run unless the handle is going to be disconnected.
 
 See the L<"Database Handle Life-Cycle Management"> section for more information on the retain/release system.
 
@@ -1508,7 +1508,7 @@ See the L<"Database Handle Life-Cycle Management"> section for more information 
 
 Returns the connected L<DBI> database handle after incrementing the reference count.  If the database handle does not exist or is not already connected, this method will do everything necessary to do so.
 
-Returns undef if the database handle could not be constructed and connected.  If there is no registered data source for the current L<type> and L<domain>, a fatal error will occur.
+Returns undef if the database handle could not be constructed and connected.  If there is no registered data source for the current L<type|/type> and L<domain|/domain>, a fatal error will occur.
 
 See the L<"Database Handle Life-Cycle Management"> section for more information on the retain/release system.
 
@@ -1530,7 +1530,7 @@ Not all databases will use all of these values.  Values that are not supported a
 
 Get or set the value of the "AutoCommit" connect option and L<DBI> handle attribute.  If a VALUE is passed, it will be set in both the connect options hash and the current database handle, if any.  Returns the value of the "AutoCommit" attribute of the database handle if it exists, or the connect option otherwise.
 
-This method should not be mixed with the L<connect_options> method in calls to L<register_db> or L<modify_db> since L<connect_options> will overwrite I<all> the connect options with its argument, and neither L<register_db> nor L<modify_db> guarantee the order that its parameters will be evaluated.
+This method should not be mixed with the L<connect_options|/connect_options> method in calls to L<register_db|/register_db> or L<modify_db|/modify_db> since L<connect_options|/connect_options> will overwrite I<all> the connect options with its argument, and neither L<register_db|/register_db> nor L<modify_db|/modify_db> guarantee the order that its parameters will be evaluated.
 
 =item B<catalog [CATALOG]>
 
@@ -1544,7 +1544,7 @@ If a reference to a hash is passed, it replaces the connect options hash.  If a 
 
 Returns a reference to the hash of options in scalar context, or a list of name/value pairs in list context.
 
-When L<init_db_info> is called for the first time on an object (either in isolation or as part of the L<connect> process), the connect options are merged with the L<default_connect_options>.  The defaults are overridden in the case of a conflict.  Example:
+When L<init_db_info|/init_db_info> is called for the first time on an object (either in isolation or as part of the L<connect|/connect> process), the connect options are merged with the L<default_connect_options|/default_connect_options>.  The defaults are overridden in the case of a conflict.  Example:
 
     Rose::DB->register_db(
       domain   => 'development',
@@ -1617,9 +1617,9 @@ Get or set the data source domain.  See the L<"Data Source Abstraction"> section
 
 =item B<driver [DRIVER]>
 
-Get or set the driver name.  The driver name can only be set during object construction (i.e., as an argument to L<new>) since it determines the object class (according to the mapping set by the L<driver_class> class method).  After the object is constructed, setting the driver to anything other than the same value it already has will cause a fatal error.
+Get or set the driver name.  The driver name can only be set during object construction (i.e., as an argument to L<new|/new>) since it determines the object class (according to the mapping set by the L<driver_class|/driver_class> class method).  After the object is constructed, setting the driver to anything other than the same value it already has will cause a fatal error.
 
-Even in the call to L<new>, setting the driver name explicitly is not recommended.  Instead, specify the driver when calling L<register_db> for each data source and allow the L<driver> to be set automatically based on the L<domain> and L<type>.
+Even in the call to L<new|/new>, setting the driver name explicitly is not recommended.  Instead, specify the driver when calling L<register_db|/register_db> for each data source and allow the L<driver|/driver> to be set automatically based on the L<domain|/domain> and L<type|/type>.
 
 The driver names for the L<currently supported database types|"DATABASE SUPPORT"> are:
 
@@ -1635,9 +1635,9 @@ Get or set the L<DBI> DSN (Data Source Name) passed to the call to L<DBI>'s L<co
 
 If using L<DBI> version 1.43 or later, an attempt is made to parse the new DSN using L<DBI>'s L<parse_dsn|DBI/parse_dsn> method.  Any parts successfully extracted are assigned to the corresponding L<Rose::DB> attributes (e.g., host, port, database).
 
-Note that an explicitly set DSN may render some other attributes inaccurate.  For example, the DSN may contain a host name that is different than the object's current L<host> value.  If the host name is not successfully extracted from the DSN and applied to the object's L<host> attribute, then the two values are out of sync.  I recommend not setting the DSN value explicitly unless you are also willing to manually synchronize (or ignore) the corresponding object attributes.
+Note that an explicitly set DSN may render some other attributes inaccurate.  For example, the DSN may contain a host name that is different than the object's current L<host|/host> value.  If the host name is not successfully extracted from the DSN and applied to the object's L<host|/host> attribute, then the two values are out of sync.  I recommend not setting the DSN value explicitly unless you are also willing to manually synchronize (or ignore) the corresponding object attributes.
 
-If the DSN is never set explicitly, it is initialized with the DSN constructed from the appropriate object attribute values when L<init_db_info> or L<connect> is called.
+If the DSN is never set explicitly, it is initialized with the DSN constructed from the appropriate object attribute values when L<init_db_info|/init_db_info> or L<connect|/connect> is called.
 
 =item B<host [NAME]>
 
@@ -1655,25 +1655,25 @@ Get or set the database server port number used in the construction of the DSN w
 
 Get or set the SQL statements that will be run immediately before disconnecting from the database.  STATEMENTS should be a list or reference to an array of SQL statements.  Returns a reference to the array of SQL statements in scalar context, or a list of SQL statements in list context.
 
-The SQL statements are run in the order that they are supplied in STATEMENTS.  If any L<pre_disconnect_sql> statement fails when executed, the subsequent statements are ignored.
+The SQL statements are run in the order that they are supplied in STATEMENTS.  If any L<pre_disconnect_sql|/pre_disconnect_sql> statement fails when executed, the subsequent statements are ignored.
 
 =item B<post_connect_sql [STATEMENTS]>
 
 Get or set the SQL statements that will be run immediately after connecting to the database.  STATEMENTS should be a list or reference to an array of SQL statements.  Returns a reference to the array of SQL statements in scalar context, or a list of SQL statements in list context.
 
-The SQL statements are run in the order that they are supplied in STATEMENTS.  If any L<post_connect_sql> statement fails when executed, the subsequent statements are ignored.
+The SQL statements are run in the order that they are supplied in STATEMENTS.  If any L<post_connect_sql|/post_connect_sql> statement fails when executed, the subsequent statements are ignored.
 
 =item B<print_error [VALUE]>
 
 Get or set the value of the "PrintError" connect option and L<DBI> handle attribute.  If a VALUE is passed, it will be set in both the connect options hash and the current database handle, if any.  Returns the value of the "PrintError" attribute of the database handle if it exists, or the connect option otherwise.
 
-This method should not be mixed with the L<connect_options> method in calls to L<register_db> or L<modify_db> since L<connect_options> will overwrite I<all> the connect options with its argument, and neither L<register_db> nor L<modify_db> guarantee the order that its parameters will be evaluated.
+This method should not be mixed with the L<connect_options|/connect_options> method in calls to L<register_db|/register_db> or L<modify_db|/modify_db> since L<connect_options|/connect_options> will overwrite I<all> the connect options with its argument, and neither L<register_db|/register_db> nor L<modify_db|/modify_db> guarantee the order that its parameters will be evaluated.
 
 =item B<raise_error [VALUE]>
 
 Get or set the value of the "RaiseError" connect option and L<DBI> handle attribute.  If a VALUE is passed, it will be set in both the connect options hash and the current database handle, if any.  Returns the value of the "RaiseError" attribute of the database handle if it exists, or the connect option otherwise.
 
-This method should not be mixed with the L<connect_options> method in calls to L<register_db> or L<modify_db> since L<connect_options> will overwrite I<all> the connect options with its argument, and neither L<register_db> nor L<modify_db> guarantee the order that its parameters will be evaluated.
+This method should not be mixed with the L<connect_options|/connect_options> method in calls to L<register_db|/register_db> or L<modify_db|/modify_db> since L<connect_options|/connect_options> will overwrite I<all> the connect options with its argument, and neither L<register_db|/register_db> nor L<modify_db|/modify_db> guarantee the order that its parameters will be evaluated.
 
 =item B<schema [SCHEMA]>
 
@@ -1741,25 +1741,25 @@ Otherwise, undef is returned.
 
 Parse STRING and return a boolean value of 1 or 0.  STRING should be formatted according to the data source's native "boolean" data type.  The default implementation accepts 't', 'true', 'y', 'yes', and '1' values for true, and 'f', 'false', 'n', 'no', and '0' values for false.
 
-If STRING is a valid boolean keyword (according to L<validate_boolean_keyword>) or if it looks like a function call (matches /^\w+\(.*\)$/) it is returned unmodified.  Returns undef if STRING could not be parsed as a valid "boolean" value.
+If STRING is a valid boolean keyword (according to L<validate_boolean_keyword|/validate_boolean_keyword>) or if it looks like a function call (matches /^\w+\(.*\)$/) it is returned unmodified.  Returns undef if STRING could not be parsed as a valid "boolean" value.
 
 =item B<parse_date STRING>
 
 Parse STRING and return a L<DateTime> object.  STRING should be formatted according to the data source's native "date" (month, day, year) data type.
 
-If STRING is a valid date keyword (according to L<validate_date_keyword>) or if it looks like a function call (matches /^\w+\(.*\)$/) it is returned unmodified.  Returns undef if STRING could not be parsed as a valid "date" value.
+If STRING is a valid date keyword (according to L<validate_date_keyword|/validate_date_keyword>) or if it looks like a function call (matches /^\w+\(.*\)$/) it is returned unmodified.  Returns undef if STRING could not be parsed as a valid "date" value.
 
 =item B<parse_datetime STRING>
 
 Parse STRING and return a L<DateTime> object.  STRING should be formatted according to the data source's native "datetime" (month, day, year, hour, minute, second) data type.
 
-If STRING is a valid datetime keyword (according to L<validate_datetime_keyword>) or if it looks like a function call (matches /^\w+\(.*\)$/) it is returned unmodified.  Returns undef if STRING could not be parsed as a valid "datetime" value.
+If STRING is a valid datetime keyword (according to L<validate_datetime_keyword|/validate_datetime_keyword>) or if it looks like a function call (matches /^\w+\(.*\)$/) it is returned unmodified.  Returns undef if STRING could not be parsed as a valid "datetime" value.
 
 =item B<parse_timestamp STRING>
 
 Parse STRING and return a L<DateTime> object.  STRING should be formatted according to the data source's native "timestamp" (month, day, year, hour, minute, second, fractional seconds) data type.  Fractional seconds are optional, and the acceptable precision may vary depending on the data source.  
 
-If STRING is a valid timestamp keyword (according to L<validate_timestamp_keyword>) or if it looks like a function call (matches /^\w+\(.*\)$/) it is returned unmodified.  Returns undef if STRING could not be parsed as a valid "timestamp" value.
+If STRING is a valid timestamp keyword (according to L<validate_timestamp_keyword|/validate_timestamp_keyword>) or if it looks like a function call (matches /^\w+\(.*\)$/) it is returned unmodified.  Returns undef if STRING could not be parsed as a valid "timestamp" value.
 
 =item B<validate_boolean_keyword STRING>
 

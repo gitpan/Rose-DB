@@ -1,3 +1,7 @@
+0.0261 (08.20.2005) - John Siracusa <siracusa@mindspring.com>
+
+    * POD fixes.
+
 0.026 (08.19.2005) - John Siracusa <siracusa@mindspring.com>
 
     * Added quote_column_name() method.

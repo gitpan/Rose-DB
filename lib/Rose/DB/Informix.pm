@@ -412,7 +412,7 @@ sub next_value_in_sequence
 sub supports_limit_with_offset
 {
   my($self) = shift;
-  
+
   my $dbh = $self->dbh or return 0;
   #print STDERR "INFORMIX VERSION = $dbh->{ix_ProductVersion}\n";  
   return $dbh->{'ix_ProductVersion'} >= 1000 ? 1 : 0;

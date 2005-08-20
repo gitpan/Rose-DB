@@ -3,7 +3,7 @@
 use strict;
 
 use Test::More tests => 45;
-  
+
 BEGIN 
 {
   require 't/test-lib.pl';
@@ -44,7 +44,7 @@ SKIP: foreach my $db_type ('pg')
 
   $db->dbh->do(q(INSERT INTO rose_db_test (id, name, fid) VALUES (1, 'a', 1)));
   $db->dbh->do(q(INSERT INTO rose_db_test (id, name, fid) VALUES (2, 'b', 2)));
-  
+
   ok($db->commit, "commit() 1 - $db_type");
 
   FAIL_COMMIT:
@@ -54,7 +54,7 @@ SKIP: foreach my $db_type ('pg')
 
     $db->dbh->do(q(INSERT INTO rose_db_test (id, name, fid) VALUES (3, 'c', 3)));
     $db->dbh->do(q(INSERT INTO rose_db_test (id, name, fid) VALUES (4, 'd', 4)));
-  
+
     ok(!defined $db->commit && $db->error, "commit() 2 - $db_type");
   }
 
@@ -64,7 +64,7 @@ SKIP: foreach my $db_type ('pg')
 
   $db->dbh->do(q(INSERT INTO rose_db_test (id, name, fid) VALUES (3, 'c', 1)));
   $db->dbh->do(q(INSERT INTO rose_db_test (id, name, fid) VALUES (4, 'd', 2)));
-  
+
   ok($db->rollback, "rollback() 2 - $db_type");
 
   ok($db->do_transaction(sub
@@ -79,11 +79,11 @@ SKIP: foreach my $db_type ('pg')
     $db->dbh->do(q(INSERT INTO rose_db_test (id, name, fid) VALUES (3, 'c', 1)));
     $db->dbh->do(q(INSERT INTO rose_db_test (id, name, fid) VALUES (4, 'd', 2)));
   }), "do_transaction() 2 - $db_type");
-  
+
   my $sth = $db->dbh->prepare('SELECT COUNT(*) FROM rose_db_test');
   $sth->execute;
   my $count = $sth->fetchrow_array;
-  
+
   is($count, 4, "do_transaction() 3 - $db_type");
 }
 
@@ -111,12 +111,12 @@ SKIP: foreach my $db_type ('mysql')
   ok(!$db->autocommit, "autocommit() 2 - $db_type");
   is($db->raise_error, 1, "raise_error() 2 - $db_type");
   is($db->print_error, 1, "print_error() 2 - $db_type");
-  
+
   $db->dbh->do(q(INSERT INTO rose_db_test (id, name) VALUES (1, 'a')));
   $db->dbh->do(q(INSERT INTO rose_db_test (id, name) VALUES (2, 'b')));
-  
+
   ok($db->commit, "commit() 1 - $db_type");
-  
+
   ok($db->do_transaction(sub
   {
     $db->dbh->do(q(INSERT INTO rose_db_test (id, name) VALUES (3, 'c')));
@@ -129,11 +129,11 @@ SKIP: foreach my $db_type ('mysql')
     $db->dbh->do(q(INSERT INTO rose_db_test (id, name) VALUES (3, 'c')));
     $db->dbh->do(q(INSERT INTO rose_db_test (id, name) VALUES (4, 'd')));
   }), "do_transaction() 2 - $db_type");
-  
+
   my $sth = $db->dbh->prepare('SELECT COUNT(*) FROM rose_db_test');
   $sth->execute;
   my $count = $sth->fetchrow_array;
-  
+
   is($count, 4, "do_transaction() 3 - $db_type");
 }
 
@@ -161,12 +161,12 @@ SKIP: foreach my $db_type ('informix')
   ok(!$db->autocommit, "autocommit() 2 - $db_type");
   is($db->raise_error, 1, "raise_error() 2 - $db_type");
   is($db->print_error, 1, "print_error() 2 - $db_type");
-  
+
   $db->dbh->do(q(INSERT INTO rose_db_test (id, name) VALUES (1, 'a')));
   $db->dbh->do(q(INSERT INTO rose_db_test (id, name) VALUES (2, 'b')));
-  
+
   ok($db->commit, "commit() 1 - $db_type");
-  
+
   ok($db->do_transaction(sub
   {
     $db->dbh->do(q(INSERT INTO rose_db_test (id, name) VALUES (3, 'c')));
@@ -179,11 +179,11 @@ SKIP: foreach my $db_type ('informix')
     $db->dbh->do(q(INSERT INTO rose_db_test (id, name) VALUES (3, 'c')));
     $db->dbh->do(q(INSERT INTO rose_db_test (id, name) VALUES (4, 'd')));
   }), "do_transaction() 2 - $db_type");
-  
+
   my $sth = $db->dbh->prepare('SELECT COUNT(*) FROM rose_db_test');
   $sth->execute;
   my $count = $sth->fetchrow_array;
-  
+
   is($count, 4, "do_transaction() 3 - $db_type");
 }
 
@@ -194,7 +194,7 @@ BEGIN
   #
 
   my $dbh;
-  
+
   eval 
   {
     $dbh = Rose::DB->new('pg_admin')->retain_dbh()
@@ -313,7 +313,7 @@ END
 
     $dbh->disconnect;
   }
-  
+
   if($HAVE_MYSQL)
   {
     # MySQL

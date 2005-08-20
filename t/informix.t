@@ -27,7 +27,7 @@ BEGIN
 
 Rose::DB->default_domain('test');
 Rose::DB->default_type('informix');
-  
+
 my $db = Rose::DB->new();
 
 ok(ref $db && $db->isa('Rose::DB'), 'new()');
@@ -215,7 +215,7 @@ SKIP:
   my $ar = $db->parse_array($str);
   ok(ref $ar eq 'ARRAY' && $ar->[0] eq 'a' && $ar->[1] eq 'b' && $ar->[2] eq 'c',
      'parse_array() 1');
-  
+
   $str = $db->format_array($ar);
   is($str, '{"a","b","c"}', 'format_array() 2');
 
@@ -225,7 +225,7 @@ SKIP:
   $ar = $db->parse_array($str);
   ok(ref $ar eq 'ARRAY' && $ar->[0] == 1 && $ar->[1] == -2 && $ar->[2] == 3.5,
      'parse_array() 2');
-  
+
   $str = $db->format_array($ar);
   is($str, '{1,-2,3.5}', 'format_array() 4');
 
@@ -241,7 +241,7 @@ SKIP:
 
   is($db->parse_boolean('t'), 1, 'parse_boolean (t)');
   is($db->parse_boolean('T'), 1, 'parse_boolean (T)');
-  
+
   is($db->parse_boolean('f'), 0, 'parse_boolean (f)');
   is($db->parse_boolean('F'), 0, 'parse_boolean (F)');
 

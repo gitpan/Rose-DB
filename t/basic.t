@@ -87,7 +87,7 @@ is($db->error, 'bar', 'error() 4');
 
 eval { $db = Rose::DB->new };
 ok(!$@, 'Valid type and domain');
-  
+
 Rose::DB->default_domain('foo');
 
 is(Rose::DB->default_domain, 'foo', 'default_domain() 2');
@@ -217,7 +217,7 @@ foreach my $param (qw(autocommit database domain driver dsn host password port
                       post_connect_sql))
 {
   eval { $entry->$param() };
-  
+
   ok(!$@, "entry $param()");
 }
 

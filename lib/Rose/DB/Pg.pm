@@ -186,14 +186,14 @@ sub next_value_in_sequence
     $self->error("Could not get the next value in the sequence '$seq' - $@");
     return undef;
   }
-  
+
   return $id;
 }
 
 sub auto_sequence_name
 {
   my($self, %args) = @_;
-  
+
   my $table = $args{'table'};
   Carp::croak "Missing table argument"  unless(defined $table);
 
@@ -210,7 +210,7 @@ sub auto_sequence_name
 sub refine_dbi_column_info
 {
   my($self, $col_info) = @_;
-  
+
   $self->SUPER::refine_dbi_column_info($col_info);
 
   # Pg has some odd names for types.  Convert them to standard forms.

@@ -142,7 +142,7 @@ BEGIN
           Rose::DB->modify_db(domain => 'test', type => $type, dsn => $dsn);
         }
       }
-      
+
       if(my $user = $ENV{"RDBO_${db_type}_USER"})
       {
         foreach my $type (grep { /^$db_type(?:_|$)/i } @types)
