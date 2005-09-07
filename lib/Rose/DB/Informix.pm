@@ -414,8 +414,9 @@ sub supports_limit_with_offset
   my($self) = shift;
 
   my $dbh = $self->dbh or return 0;
-  #print STDERR "INFORMIX VERSION = $dbh->{ix_ProductVersion}\n";  
-  return $dbh->{'ix_ProductVersion'} >= 1000 ? 1 : 0;
+
+  # "950" is what Informix version 10 returns
+  return $dbh->{'ix_ProductVersion'} >= 950 ? 1 : 0;
   return 0;
 }
 

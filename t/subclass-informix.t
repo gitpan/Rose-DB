@@ -27,7 +27,7 @@ BEGIN
 
 My::DB2->default_domain('test');
 My::DB2->default_type('informix');
-  
+
 my $db = My::DB2->new();
 
 ok(ref $db && $db->isa('Rose::DB'), 'new()');
@@ -60,7 +60,14 @@ ok(ref $db && $db->isa('Rose::DB'), "new()");
 
 $db->init_db_info;
 
-ok(!$db->supports_limit_with_offset, 'supports_limit_with_offset');
+if($db->dbh->{'ix_ProductVersion'} >= 950)
+{
+  ok($db->supports_limit_with_offset, 'supports_limit_with_offset');
+}
+else
+{
+  ok(!$db->supports_limit_with_offset, 'supports_limit_with_offset');
+}
 
 ok($db->validate_timestamp_keyword('today'), 'validate_timestamp_keyword (today)');
 ok($db->validate_timestamp_keyword('current'), 'validate_timestamp_keyword (current)');
@@ -215,7 +222,7 @@ SKIP:
   my $ar = $db->parse_array($str);
   ok(ref $ar eq 'ARRAY' && $ar->[0] eq 'a' && $ar->[1] eq 'b' && $ar->[2] eq 'c',
      'parse_array() 1');
-  
+
   $str = $db->format_array($ar);
   is($str, '{"a","b","c"}', 'format_array() 2');
 
@@ -225,7 +232,7 @@ SKIP:
   $ar = $db->parse_array($str);
   ok(ref $ar eq 'ARRAY' && $ar->[0] == 1 && $ar->[1] == -2 && $ar->[2] == 3.5,
      'parse_array() 2');
-  
+
   $str = $db->format_array($ar);
   is($str, '{1,-2,3.5}', 'format_array() 4');
 
@@ -241,7 +248,7 @@ SKIP:
 
   is($db->parse_boolean('t'), 1, 'parse_boolean (t)');
   is($db->parse_boolean('T'), 1, 'parse_boolean (T)');
-  
+
   is($db->parse_boolean('f'), 0, 'parse_boolean (f)');
   is($db->parse_boolean('F'), 0, 'parse_boolean (F)');
 

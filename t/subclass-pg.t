@@ -27,7 +27,7 @@ BEGIN
 
 My::DB2->default_domain('test');
 My::DB2->default_type('pg');
-  
+
 my $db = My::DB2->new();
 
 ok(ref $db && $db->isa('Rose::DB'), 'new()');
@@ -183,7 +183,7 @@ SKIP:
   is($db->parse_datetime('2002-12-31 12:34:56'), parse_date('12/31/2002 12:34:56', 'UTC'),  "parse_datetime()");
   is($db->parse_timestamp('2002-12-31 12:34:56'), parse_date('12/31/2002 12:34:56', 'UTC'),  "parse_timestamp()");
   #is($db->parse_time('12:34:56'), parse_date('12/31/2002 12:34:56', 'UTC')->strftime('%H:%M:%S'),  "parse_time()");
-  
+
   $db->european_dates(1);
 
   is($db->parse_date('31-12-2002'), parse_date('12/31/2002', 'UTC'),  "parse_date() european");
@@ -214,7 +214,7 @@ SKIP:
   my $ar = $db->parse_array($str);
   ok(ref $ar eq 'ARRAY' && $ar->[0] eq 'a' && $ar->[1] eq 'b' && $ar->[2] eq 'c',
      'parse_array() 1');
-  
+
   $str = $db->format_array($ar);
   is($str, '{"a","b","c"}', 'format_array() 2');
 
@@ -224,7 +224,7 @@ SKIP:
   $ar = $db->parse_array($str);
   ok(ref $ar eq 'ARRAY' && $ar->[0] == 1 && $ar->[1] == -2 && $ar->[2] == 3.5,
      'parse_array() 2');
-  
+
   $str = $db->format_array($ar);
   is($str, '{1,-2,3.5}', 'format_array() 4');
 
@@ -254,7 +254,7 @@ SKIP:
   ok($@, 'auto_sequence_name() 2');
 
   is($db->auto_sequence_name(table => 'foo.goo', column => 'bar'), 'foo.goo_bar_seq', 'auto_sequence_name() 3');
-  
+
   my $dbh_copy = $db->retain_dbh;
 
   $db->disconnect;

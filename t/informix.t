@@ -60,7 +60,14 @@ ok(ref $db && $db->isa('Rose::DB'), "new()");
 
 $db->init_db_info;
 
-ok(!$db->supports_limit_with_offset, 'supports_limit_with_offset');
+if($db->dbh->{'ix_ProductVersion'} >= 950)
+{
+  ok($db->supports_limit_with_offset, 'supports_limit_with_offset');
+}
+else
+{
+  ok(!$db->supports_limit_with_offset, 'supports_limit_with_offset');
+}
 
 ok($db->validate_timestamp_keyword('today'), 'validate_timestamp_keyword (today)');
 ok($db->validate_timestamp_keyword('current'), 'validate_timestamp_keyword (current)');
