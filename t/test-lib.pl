@@ -191,8 +191,20 @@ sub subclass_special_informix { 'INFORMIX' }
 package My::DB3;
 @My::DB3::ISA = qw(My::DB2);
 
-our %Registry;
+My::DB3->registry(Rose::DB::Registry->new);
 
-sub db_registry_hash { \%Registry }
+package My::DBReg;
+@My::DBReg::ISA = qw(Rose::DB);
+
+My::DBReg->registry(Rose::DB::Registry->new);
+
+My::DBReg->register_db(
+  domain   => 'test',
+  type     => 'pg_sub',
+  driver   => 'Pg',
+  database => 'test_sub',
+  host     => 'subhost',
+  username => 'subuser');
 
 1;
+

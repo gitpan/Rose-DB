@@ -10,52 +10,20 @@ use Rose::DateTime::Util();
 
 use Rose::DB::Registry;
 use Rose::DB::Registry::Entry;
+use Rose::DB::Constants qw(IN_TRANSACTION);
 
 use Rose::Object;
 our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.0264';
+our $VERSION = '0.03';
 
 our $Debug = 0;
 
 #
-# Object data
+# Class data
 #
-
-use Rose::Object::MakeMethods::Generic
-(
-  'scalar' =>
-  [
-    qw(database schema catalog host port username password european_dates
-       _dbh_refcount _origin_class)
-  ],
-
-  'boolean' =>
-  [
-    '_dbh_is_private',
-  ],
-
-  'scalar --get_set_init' =>
-  [
-    'domain',
-    'type',
-    'date_handler',
-    'server_time_zone'
-  ],
-
-  'array' => 
-  [
-    'post_connect_sql',
-    'pre_disconnect_sql',
-  ],
-
-  'hash' =>
-  [
-    connect_options => { interface => 'get_set_init' },
-  ]
-);
 
 use Rose::Class::MakeMethods::Generic
 (
@@ -114,6 +82,43 @@ LOAD_SUBCLASSES:
     die "Could not load $class - $@"  if($@);
   }
 }
+
+#
+# Object data
+#
+
+use Rose::Object::MakeMethods::Generic
+(
+  'scalar' =>
+  [
+    qw(database schema catalog host port username password european_dates
+       _dbh_refcount _origin_class)
+  ],
+
+  'boolean' =>
+  [
+    '_dbh_is_private',
+  ],
+
+  'scalar --get_set_init' =>
+  [
+    'domain',
+    'type',
+    'date_handler',
+    'server_time_zone'
+  ],
+
+  'array' => 
+  [
+    'post_connect_sql',
+    'pre_disconnect_sql',
+  ],
+
+  'hash' =>
+  [
+    connect_options => { interface => 'get_set_init' },
+  ]
+);
 
 #
 # Class methods
@@ -282,7 +287,35 @@ sub new
   my $driver_class = $class->driver_class($driver) or Carp::croak
     "No driver class found for driver '$driver'";
 
-  my $self = bless {}, $driver_class;
+  my $self;
+
+  REBLESS: # Do slightly evil re-blessing magic
+  {
+    # Special, simple case for Rose::DB
+    if($class eq __PACKAGE__)
+    {
+      $self = bless {}, $driver_class;
+    }
+    else # Handle Rose::DB subclasses
+    {
+      # If this is a default Rose::DB driver class
+      if(index($driver_class, 'Rose::DB::') == 0)
+      {
+        # Make a new driver class based on the current class
+        my $new_class = $class . '::__RoseDBPrivate__::' . $driver_class;
+
+        no strict 'refs';        
+        @{"${new_class}::ISA"} = ($driver_class, $class);
+
+        $self = bless {}, $new_class;
+      }
+      else
+      {
+        # Otherwise use the (apparently custom) driver class
+        $self = bless {}, $driver_class;
+      }
+    }
+  }
 
   $self->{'_origin_class'} = $class;
 
@@ -298,8 +331,12 @@ sub init
   $self->init_db_info;
 }
 
-sub init_domain { shift->_origin_class->default_domain }
-sub init_type   { shift->_origin_class->default_type }
+# These have to "cheat" to get the right values by going through
+# the real origin class because they may be called after the 
+# re-blessing magic takes place.
+sub init_domain { shift->{'_origin_class'}->default_domain }
+sub init_type   { shift->{'_origin_class'}->default_type }
+
 sub init_date_handler { Rose::DateTime::Format::Stub->new }
 sub init_server_time_zone { 'floating' }
 
@@ -641,7 +678,7 @@ sub begin_work
     return 1;
   }
 
-  return -1;
+  return IN_TRANSACTION;
 }
 
 sub commit
@@ -1057,9 +1094,12 @@ Rose::DB - A DBI wrapper and abstraction layer.
 
 =head1 SYNOPSIS
 
-  use Rose::DB;
+  package My::DB;
 
-  Rose::DB->register_db(
+  use Rose::DB;
+  our @ISA = qw(Rose::DB);
+
+  My::DB->register_db(
     domain   => 'development',
     type     => 'main',
     driver   => 'Pg',
@@ -1070,7 +1110,7 @@ Rose::DB - A DBI wrapper and abstraction layer.
     server_time_zone => 'UTC',
   );
 
-  Rose::DB->register_db(
+  My::DB->register_db(
     domain   => 'production',
     type     => 'main',
     driver   => 'Pg',
@@ -1081,11 +1121,11 @@ Rose::DB - A DBI wrapper and abstraction layer.
     server_time_zone => 'UTC',
   );
 
-  Rose::DB->default_domain('development');
-  Rose::DB->default_type('main');
+  My::DB->default_domain('development');
+  My::DB->default_type('main');
   ...
 
-  $db = Rose::DB->new;
+  $db = My::DB->new;
 
   my $dbh = $db->dbh or die $db->error;
 
@@ -1120,6 +1160,8 @@ Rose::DB - A DBI wrapper and abstraction layer.
 =head1 DESCRIPTION
 
 L<Rose::DB> is a wrapper and abstraction layer for C<DBI>-related functionality.  A L<Rose::DB> object "has a" L<DBI> object; it is not a subclass of L<DBI>.
+
+Please see the L<tutorial|Rose::DB::Tutorial> (perldoc Rose::DB::Tutorial) for an example usage scenario that reflects "best practices" for this module.
 
 =head1 DATABASE SUPPORT
 
@@ -1205,9 +1247,13 @@ Transactions may be started, committed, and rolled back in a variety of ways usi
 
 =head1 SUBCLASSING
 
-Subclassing is encouraged and generally works as expected.  There is, however, the question of how class data is shared with subclasses.  Here's how it works for the various pieces of class data.
+Subclassing is B<strongly encouraged> and generally works as expected.  (See the L<tutorial|Rose::DB::Tutorial> for a complete example.)  There is, however, the question of how class data is shared with subclasses.  Here's how it works for the various pieces of class data.
 
 =over
+
+=item B<alias_db>, B<modify_db>, B<register_db>, B<unregister_db>, B<unregister_domain>
+
+By default, all subclasses share the same data source "registry" with L<Rose::DB>.  To provide a private registry for your subclass (the recommended approach), see the example in the documentation for the L<registry|/registry> method below.
 
 =item B<default_domain>, B<default_type>
 
@@ -1227,10 +1273,6 @@ The superclass from which the hash is copied is the closest ("least super") clas
 Setting to hash to undef (using the 'reset' interface) will cause it to be re-copied from a superclass the next time it is accessed.
 
 (These attributes use the L<inheritable_hash|Rose::Class::MakeMethods::Generic/inheritable_hash> method type as defined in L<Rose::Class::MakeMethods::Generic>.)
-
-=item B<alias_db>, B<modify_db>, B<register_db>, B<unregister_db>, B<unregister_domain>
-
-All subclasses share the same data source "registry" with L<Rose::DB>.  There is an undocumented method for creating a private data source registry for a subclass of L<Rose::DB> (search DB.pm for C<sub db_registry_hash>), but it is subject to change without notice and should not be relied upon.  If there is enough demand for a supported method, I will add one.
 
 =back
 
@@ -1308,12 +1350,20 @@ The C<driver> is used to determine which class objects will be blessed into by t
 
 In most deployment scenarios, L<register_db|/register_db> is called early in the compilation process to ensure that the registered data sources are available when the "real" code runs.
 
-Database registration is often consolidated to a single module which is then C<use>ed at the start of the code.  For example, imagine a mod_perl web server environment:
+Database registration can be included directly in your L<Rose::DB> subclass.  This is the recommended approach.  Example:
 
-    # File: MyCorp/DataSources.pm
-    package MyCorp::DataSources;
+    package My::DB;
 
-    Rose::DB->register_db(
+    use Rose::DB;
+    our @ISA = qw(Rose::DB);
+
+    use Rose::DB::Registry;
+
+    # Create a private registry for this class
+    __PACKAGE__->registry(Rose::DB::Registry->new);
+
+    # Register data sources
+    My::DB->register_db(
       domain   => 'development',
       type     => 'main',
       driver   => 'Pg',
@@ -1323,7 +1373,33 @@ Database registration is often consolidated to a single module which is then C<u
       password => 'mysecret',
     );
 
-    Rose::DB->register_db(
+    My::DB->register_db(
+      domain   => 'production',
+      type     => 'main',
+      driver   => 'Pg',
+      database => 'big_db',
+      host     => 'dbserver.acme.com',
+      username => 'dbadmin',
+      password => 'prodsecret',
+    );
+    ...
+
+Another possible approach is to consolidate data source registration in a single module which is then C<use>ed early on in the code path.  For example, imagine a mod_perl web server environment:
+
+    # File: MyCorp/DataSources.pm
+    package MyCorp::DataSources;
+
+    My::DB->register_db(
+      domain   => 'development',
+      type     => 'main',
+      driver   => 'Pg',
+      database => 'dev_db',
+      host     => 'localhost',
+      username => 'devuser',
+      password => 'mysecret',
+    );
+
+    My::DB->register_db(
       domain   => 'production',
       type     => 'main',
       driver   => 'Pg',
@@ -1336,10 +1412,11 @@ Database registration is often consolidated to a single module which is then C<u
 
     # File: /usr/local/apache/conf/startup.pl
 
+    use My::DB; # your Rose::DB subclass
     use MyCorp::DataSources; # register all data sources
     ...
 
-Data source registration can happen at any time, of course, but it is most useful when all application code can simply assume that all the data sources are already registered.  Doing the registration as early as possible (e.g., in a C<startup.pl> file that is loaded from an apache/mod_perl web server's C<httpd.conf> file) is the best way to create such an environment.
+Data source registration can happen at any time, of course, but it is most useful when all application code can simply assume that all the data sources are already registered.  Doing the registration as early as possible (e.g., directly in your L<Rose::DB> subclass, or in a C<startup.pl> file that is loaded from an apache/mod_perl web server's C<httpd.conf> file) is the best way to create such an environment.
 
 Note that the data source registry serves as an I<initial> source of information for L<Rose::DB> objects.  Once an object is instantiated, it is independent of the registry.  Changes to an object are not reflected in the registry, and changes to the registry are not reflected in existing objects.
 
@@ -1347,7 +1424,22 @@ Note that the data source registry serves as an I<initial> source of information
 
 Get or set the L<Rose::DB::Registry>-derived object that manages and stores the data source registry.  It defaults to an "empty" L<Rose::DB::Registry> object.  Remember that setting a new registry will replace the existing registry and all the data sources registered in it.
 
-See the L<Rose::DB::Registry> for more information.
+Note that L<Rose::DB> subclasses will inherit the base class's L<Rose::DB::Registry> object and will therefore inherit all existing registry entries and share the same registry namespace as the base class.   This may or may not be what you want.
+
+In most cases, it's wise to give your subclass its own private registry if it inherits directly from L<Rose::DB>.  To do that, just set a new registry object in your subclass.  Example:
+
+    package My::DB;
+
+    use Rose::DB;
+    our @ISA = qw(Rose::DB);
+
+    use Rose::DB::Registry;
+
+    # Create a private registry for this class
+    __PACKAGE__->registry(Rose::DB::Registry->new);
+    ...
+
+Further subclasses of C<My::DB> may then inherit its registry object, if desired, or may create their own private registries in the manner shown above.
 
 =item B<unregister_db PARAMS>
 
@@ -1779,6 +1871,20 @@ Returns true if STRING is a valid keyword for the "datetime" (month, day, year, 
 Returns true if STRING is a valid keyword for the "timestamp" (month, day, year, hour, minute, second, fractional seconds) data type of the current data source, false otherwise.  The default implementation always returns false.
 
 =back
+
+=head1 DEVELOPMENT POLICY
+
+The L<Rose development policy|Rose/"DEVELOPMENT POLICY"> applies to this, and all C<Rose::*> modules.  Please install L<Rose> from CPAN and then run "C<perldoc Rose>" for more information.
+
+=head1 SUPPORT
+
+Any L<Rose::DB> questions or problems can be posted to the L<Rose::DB::Object> mailing list.  (If the volume ever gets high enough, I'll create a separate list for L<Rose::DB>, but it isn't an issue right now.)  To subscribe to the list or view the archives, go here:
+
+L<http://lists.sourceforge.net/lists/listinfo/rose-db-object>
+
+Although the mailing list is the preferred support mechanism, you can also email the author (see below) or file bugs using the CPAN bug tracking system:
+
+L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Rose-DB>
 
 =head1 AUTHOR
 
