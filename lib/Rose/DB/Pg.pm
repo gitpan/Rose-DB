@@ -26,7 +26,7 @@ sub build_dsn
   $info{'port'}   = $args{'port'};
 
   return
-    "dbi:$args{'driver'}:" . 
+    "dbi:$args{'dbi_driver'}:" . 
     join(';', map { "$_=$info{$_}" } grep { defined $info{$_} }
               qw(dbname host port));
 }
@@ -224,11 +224,32 @@ sub refine_dbi_column_info
     $col_info->{'TYPE_NAME'} = 'bits';
   }
 
+  # Postgres 8.1 sometimes adds double quotes around the column name
+  if($col_info->{'COLUMN_NAME'} =~ /^"(.+)"$/)
+  {
+    $col_info->{'COLUMN_NAME'} = $1;
+  }
+
   # Pg does not populate COLUMN_SIZE correctly for bit fields, so
   # we have to extract the number of bits from pg_type.
   if($col_info->{'pg_type'} =~ /^bit\((\d+)\)$/)
   {
     $col_info->{'COLUMN_SIZE'} = $1;
+  }
+
+  # Extract precision and scale from numeric types
+  if($col_info->{'pg_type'} =~ /^numeric/i)
+  {
+    if($col_info->{'COLUMN_SIZE'} =~ /^(\d+),(\d+)$/)
+    {
+      $col_info->{'COLUMN_SIZE'}    = $1;
+      $col_info->{'DECIMAL_DIGITS'} = $2;
+    }
+    elsif($col_info->{'pg_type'} =~ /^numeric\((\d+),(\d+)\)$/i)
+    {
+      $col_info->{'COLUMN_SIZE'}    = $2;
+      $col_info->{'DECIMAL_DIGITS'} = $1;
+    }
   }
 
   # We currently treat all arrays the same, regardless of what they are 
@@ -251,12 +272,26 @@ sub parse_dbi_column_info_default
     no warnings;
     local $_ = $string;
 
+    my $pg_vers = $self->dbh->{'pg_server_version'};
+
     # Example: q('value'::character varying)
-    # Single quotes are backslash-escaped.
-    if(/^'((?:[^\\']+|\\.)*)'::[\w ]+$/)
+    if(/^'.+'::[\w ]+$/)
     {
-      my $default = $1;
-      $default =~ s/\\'/'/g;
+      my $default;
+
+      # Single quotes are backslash-escaped, but Postgres 8.1 and
+      # later uses doubled quotes '' instead.
+      if($pg_vers >= 80100 && /^'((?:[^']+|'')*)'::[\w ]+$/)
+      {
+        $default = $1;
+        $default =~ s/''/'/g;
+      }
+      elsif($pg_vers < 80100 && /^'((?:[^\\']+|\\.)*)'::[\w ]+$/)
+      {
+        $default = $1;
+        $default =~ s/\\'/'/g;
+      }
+
       return $default;
     }
     # Example: q(B'00101'::"bit")

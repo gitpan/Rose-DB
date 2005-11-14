@@ -1,3 +1,10 @@
+0.032 (11.09.2005) - John Siracusa <siracusa@mindspring.com>
+
+    * Driver names are now case-insensitive.
+    * Added generic fallback class for unsupported databases.
+    * Added the use_private_registry() convenience method.
+    * Added some tweaks to support Postgres 8.1.
+
 0.031 (10.25.2005) - John Siracusa <siracusa@mindspring.com>
 
     * Support for Rose::DB::Object 0.079.

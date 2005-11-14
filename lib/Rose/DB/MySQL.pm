@@ -35,7 +35,7 @@ sub build_dsn
   $info{'port'}     = $args{'port'};
 
   return
-    "dbi:$args{'driver'}:" . 
+    "dbi:$args{'dbi_driver'}:" . 
     join(';', map { "$_=$info{$_}" } grep { defined $info{$_} }
               qw(database host port));
 }
@@ -154,7 +154,10 @@ sub refine_dbi_column_info
     {
       # Translate "current time" value into something that our date parser
       # will understand.
-      $col_info->{'COLUMN_DEF'} = 'now';
+      #$col_info->{'COLUMN_DEF'} = 'now';
+      
+      # Actually, let the database handle this.
+      $col_info->{'COLUMN_DEF'} = undef;
     }
   }
 
