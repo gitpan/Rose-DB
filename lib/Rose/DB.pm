@@ -17,7 +17,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.032';
+our $VERSION = '0.50';
 
 our $Debug = 0;
 
@@ -106,7 +106,8 @@ use Rose::Object::MakeMethods::Generic
     'domain',
     'type',
     'date_handler',
-    'server_time_zone'
+    'server_time_zone',
+    'class',
   ],
 
   'array' => 
@@ -268,6 +269,8 @@ sub new
         $self = bless {}, $driver_class;
       }
     }
+    
+    $self->class($class);
   }
 
   $self->{'_origin_class'} = $class;
@@ -282,6 +285,24 @@ sub init
   my($self) = shift;
   $self->SUPER::init(@_);
   $self->init_db_info;
+}
+
+sub init_class 
+{
+  my($self) = shift;
+  
+  my $class = ref $self;
+
+  if($class =~ /^Rose::DB::/)
+  {
+    return 'Rose::DB';
+  }
+  elsif($class =~ /^((?:\w+::)*\w+)::__RoseDBPrivate__::/)
+  {
+    return $1;
+  }
+  
+  return $class;
 }
 
 # These have to "cheat" to get the right values by going through
@@ -994,6 +1015,37 @@ sub refine_dbi_column_info
 
 sub parse_dbi_column_info_default { $_[1] }
 
+sub list_tables
+{
+  my($self, %args) = @_;
+
+  my $types = $args{'include_views'} ? "'TABLE','VIEW'" : 'TABLE';
+  my @tables;
+  
+  eval
+  {
+    my $dbh = $self->dbh or die $self->error;
+
+    local $dbh->{'RaiseError'} = 1;
+
+    my $sth = $dbh->table_info($self->catalog, $self->schema, '', $types);
+
+    $sth->execute;
+    
+    while(my $table_info = $sth->fetchrow_hashref)
+    {
+      push(@tables, $table_info->{'TABLE_NAME'})
+    }
+  };
+
+  if($@)
+  {
+    Carp::croak "Could not last tables from ", $self->dsn, " - $@";
+  }
+
+  return wantarray ? @tables : \@tables;
+}
+
 #
 # This is both a class and an object method
 #
@@ -1557,6 +1609,10 @@ Returns the name of the L<DBI> statement handle attribute that contains the auto
 =item B<last_insertid_from_sth STH>
 
 Given a L<DBI> statement handle, returns the value of the auto-generated unique key created during the last insert operation.  This value may be undefined if this feature is not supported by the current data source.
+
+=item B<list_tables>
+
+Returns a list (in list context) or reference to an array (in scalar context) of table in the database.  The current L<catalog|/catalog> and L<schema|/schema> are honored.
 
 =item B<quote_column_name NAME>
 
