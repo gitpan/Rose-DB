@@ -201,7 +201,7 @@ sub auto_sequence_name
   my $column = $args{'column'};
   Carp::croak "Missing column argument"  unless(defined $column);
 
-  return "\L${table}_${column}_seq";
+  return lc "${table}_${column}_seq";
 }
 
 #
@@ -332,7 +332,7 @@ sub list_tables
     
     while(my $table_info = $sth->fetchrow_hashref)
     {
-      push(@tables, $table_info->{'TABLE_NAME'})
+      push(@tables, $self->unquote_table_name($table_info->{'TABLE_NAME'}));
     }
   };
 

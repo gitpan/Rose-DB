@@ -17,7 +17,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.51';
+our $VERSION = '0.52';
 
 our $Debug = 0;
 
@@ -806,6 +806,24 @@ sub do_transaction
 
 sub quote_column_name { $_[1] }
 
+sub unquote_column_name
+{
+  my($self_or_class, $name) = @_;
+
+  if($name =~ /^(['"`])(.+)\1$/)
+  {
+    my $q = $1;
+    $name = $2;
+    $name =~ s/$q$q/$q/g;
+  }
+
+  return $name;
+}
+
+sub quote_table_name { $_[1] }
+
+*unquote_table_name = \&unquote_column_name;
+
 BEGIN
 {
   sub quote_identifier_dbi
@@ -1045,6 +1063,9 @@ sub refine_dbi_column_info
 
   # Make sure the data type name is lowercase
   $col_info->{'TYPE_NAME'} = lc $col_info->{'TYPE_NAME'};
+
+  # Unquote column name
+  $col_info->{'COLUMN_NAME'} = $self->unquote_column_name($col_info->{'COLUMN_NAME'});
 
   return;
 }
