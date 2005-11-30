@@ -17,7 +17,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.52';
+our $VERSION = '0.53';
 
 our $Debug = 0;
 
@@ -32,6 +32,7 @@ use Rose::Class::MakeMethods::Generic
     'default_domain',
     'default_type',
     'registry',
+    'max_array_characters',
   ]
 );
 
@@ -52,11 +53,14 @@ use Rose::Class::MakeMethods::Generic
 __PACKAGE__->default_domain('default');
 __PACKAGE__->default_type('default');
 
+__PACKAGE__->max_array_characters(255); # Used for array type emulation
+
 __PACKAGE__->driver_classes
 (
   mysql    => 'Rose::DB::MySQL',
   pg       => 'Rose::DB::Pg',
   informix => 'Rose::DB::Informix',
+  sqlite   => 'Rose::DB::SQLite',
   generic  => 'Rose::DB::Generic',
 );
 
@@ -71,18 +75,21 @@ __PACKAGE__->default_connect_options
 
 BEGIN { __PACKAGE__->registry(Rose::DB::Registry->new) }
 
-LOAD_SUBCLASSES:
-{
-  my %seen;
+my %Class_Loaded;
 
-  my $map = __PACKAGE__->driver_classes;
-
-  foreach my $class (values %$map)
-  {
-    eval qq(require $class)  unless($seen{$class}++);
-    die "Could not load $class - $@"  if($@);
-  }
-}
+# Load on demand instead
+# LOAD_SUBCLASSES:
+# {
+#   my %seen;
+# 
+#   my $map = __PACKAGE__->driver_classes;
+# 
+#   foreach my $class (values %$map)
+#   {
+#     eval qq(require $class)  unless($seen{$class}++);
+#     die "Could not load $class - $@"  if($@);
+#   }
+# }
 
 #
 # Object data
@@ -93,12 +100,13 @@ use Rose::Object::MakeMethods::Generic
   'scalar' =>
   [
     qw(database dbi_driver schema catalog host port username 
-       password european_dates _dbh_refcount _origin_class)
+       password european_dates _dbh_refcount _origin_class id)
   ],
 
   'boolean' =>
   [
     '_dbh_is_private',
+    'auto_create' => { default => 1 },
   ],
 
   'scalar --get_set_init' =>
@@ -201,6 +209,8 @@ sub driver_class { shift->_driver_class(lc shift, @_) }
 # Object methods
 #
 
+my %Rebless;
+
 sub new
 {
   my($class) = shift;
@@ -241,39 +251,56 @@ sub new
      $class->driver_class('generic') || Carp::croak
     "No driver class found for drivers '$driver' or 'generic'";
 
+  unless($Class_Loaded{$driver_class})
+  {
+    $class->load_driver_class($driver_class);
+  }
+
   my $self;
 
   REBLESS: # Do slightly evil re-blessing magic
   {
-    # Special, simple case for Rose::DB
-    if($class eq __PACKAGE__)
+    # Check cache
+    if(my $new_class = $Rebless{$class,$driver_class})
     {
-      $self = bless {}, $driver_class;
+      $self = bless {}, $new_class;
     }
-    else # Handle Rose::DB subclasses
+    else
     {
-      # If this is a default Rose::DB driver class
-      if(index($driver_class, 'Rose::DB::') == 0)
+      # Special, simple case for Rose::DB
+      if($class eq __PACKAGE__)
       {
-        # Make a new driver class based on the current class
-        my $new_class = $class . '::__RoseDBPrivate__::' . $driver_class;
-
-        no strict 'refs';        
-        @{"${new_class}::ISA"} = ($driver_class, $class);
-
-        $self = bless {}, $new_class;
-      }
-      else
-      {
-        # Otherwise use the (apparently custom) driver class
         $self = bless {}, $driver_class;
       }
-    }
-    
+      else # Handle Rose::DB subclasses
+      {
+        # If this is a default Rose::DB driver class
+        if(index($driver_class, 'Rose::DB::') == 0)
+        {
+          # Make a new driver class based on the current class
+          my $new_class = $class . '::__RoseDBPrivate__::' . $driver_class;
+  
+          no strict 'refs';        
+          @{"${new_class}::ISA"} = ($driver_class, $class);
+  
+          $self = bless {}, $new_class;
+        }
+        else
+        {
+          # Otherwise use the (apparently custom) driver class
+          $self = bless {}, $driver_class;
+        }
+      }
+
+      # Cache value
+      $Rebless{$class,$driver_class} = ref $self;
+    }    
+
     $self->class($class);
   }
 
   $self->{'_origin_class'} = $class;
+  $self->{'id'} = "$domain\0$type";
 
   $self->init(@_);
 
@@ -285,6 +312,36 @@ sub init
   my($self) = shift;
   $self->SUPER::init(@_);
   $self->init_db_info;
+}
+
+sub load_driver_class
+{
+  my($class, $arg) = @_;
+
+  my $driver_class = $class->driver_class($arg) || $arg;
+
+  eval "require $driver_class";
+
+  Carp::croak "Could not load driver class '$driver_class' - $@"
+    if($@ && !UNIVERSAL::isa($driver_class, 'Rose::DB'));
+
+  $Class_Loaded{$driver_class}++;
+}
+
+sub driver_class_is_loaded { $Class_Loaded{$_[1]} }
+
+sub load_driver_classes
+{
+  my($class) = shift;
+
+  my $map = $class->driver_classes;
+
+  foreach my $arg (@_ ? @_ : keys %$map)
+  {
+    $class->load_driver_class($arg);
+  }
+
+  return;
 }
 
 sub init_class 
@@ -311,7 +368,7 @@ sub init_class
 sub init_domain { shift->{'_origin_class'}->default_domain }
 sub init_type   { shift->{'_origin_class'}->default_type }
 
-sub init_date_handler { Rose::DateTime::Format::Stub->new }
+sub init_date_handler { Rose::DateTime::Format::Generic->new }
 sub init_server_time_zone { 'floating' }
 
 sub init_db_info
@@ -810,6 +867,7 @@ sub unquote_column_name
 {
   my($self_or_class, $name) = @_;
 
+  # handle quoted strings with quotes doubled inside them
   if($name =~ /^(['"`])(.+)\1$/)
   {
     my $q = $1;
@@ -1016,6 +1074,61 @@ sub format_bitfield
   return $vec->to_Bin;
 }
 
+sub parse_array
+{
+  my($self) = shift;
+
+  return $_[0]  if(ref $_[0]);
+  return [ @_ ] if(@_ > 1);
+
+  my $val = $_[0];
+
+  return undef  unless(defined $val);
+
+  $val =~ s/^\{(.*)\}$/$1/;
+
+  my @array;
+
+  while($val =~ s/(?:"((?:[^"\\]+|\\.)*)"|([^",]+))(?:,|$)//)
+  {
+    push(@array, (defined $1) ? $1 : $2);
+  }
+
+  return \@array;
+}
+
+sub format_array
+{
+  my($self) = shift;
+
+  my @array = (ref $_[0]) ? @{$_[0]} : @_;
+
+  return undef  unless(@array && defined $array[0]);
+
+  my $str = '{' . join(',', map 
+  {
+    if(/^[-+]?\d+(?:\.\d*)?$/)
+    {
+      $_
+    }
+    else
+    {
+      s/\\/\\\\/g; 
+      s/"/\\"/g;
+      qq("$_") 
+    }
+  } @array) . '}';
+
+  if(length($str) > $self->max_array_characters)
+  {
+    Carp::croak "Array string is longer than ", ref($self), 
+                "->max_array_characters (", $self->max_array_characters,
+                ") characters long: $str";
+  }
+
+  return $str;
+}
+
 sub build_dsn { 'override in subclass' }
 
 sub validate_boolean_keyword
@@ -1037,7 +1150,7 @@ sub next_value_in_sequence
   return undef;
 }
 
-sub auto_sequence_name { return undef }
+sub auto_sequence_name { undef }
 
 sub supports_limit_with_offset { 1 }
 sub likes_redundant_join_conditions { 0 }
@@ -1133,7 +1246,10 @@ sub DESTROY
 
 BEGIN
 {
-  package Rose::DateTime::Format::Stub;
+  package Rose::DateTime::Format::Generic;
+
+  use Rose::Object;
+  our @ISA = qw(Rose::Object);
 
   use Rose::Object::MakeMethods::Generic
   (
@@ -1143,7 +1259,7 @@ BEGIN
 
   sub format_date      { shift; Rose::DateTime::Util::format_date($_[0], '%Y-%m-%d') }
   sub format_datetime  { shift; Rose::DateTime::Util::format_date($_[0], '%Y-%m-%d %T') }
-  sub format_timestamp { shift; Rose::DateTime::Util::format_date($_[0], '%Y%m%d%H%M%S') }
+  sub format_timestamp { shift; Rose::DateTime::Util::format_date($_[0], '%Y-%m-%d %H:%M:%S.%N') }
 
   sub parse_date       { shift; Rose::DateTime::Util::parse_date($_[0]) }
   sub parse_datetime   { shift; Rose::DateTime::Util::parse_date($_[0]) }
@@ -1235,14 +1351,16 @@ L<Rose::DB> currently supports the following L<DBI> database drivers:
 
     DBD::Pg       (PostgreSQL)
     DBD::mysql    (MySQL)
+    DBD::SQLite   (SQLite)
     DBD::Informix (Informix)
 
 L<Rose::DB> will attempt to service an unsupported database using a L<generic|Rose::DB::Generic> implementation that may or may not work.  Support for more drivers may be added in the future.  Patches are welcome.
 
 All database-specific behavior is contained and documented in the subclasses of L<Rose::DB>.  L<Rose::DB>'s constructor method (L<new()|/new>) returns  a database-specific subclass of L<Rose::DB>, chosen based on the L<driver|/driver> value of the selected L<data source|"Data Source Abstraction">.  The default mapping of databases to L<Rose::DB> subclasses is:
 
-    DBD::Pg       -> Rose::DB::Pg      
-    DBD::mysql    -> Rose::DB::MySQL   
+    DBD::Pg       -> Rose::DB::Pg
+    DBD::mysql    -> Rose::DB::MySQL
+    DBD::SQLite   -> Rose::DB::SQLite
     DBD::Informix -> Rose::DB::Informix
 
 This mapping can be changed using the L<driver_class|/driver_class> class method.
