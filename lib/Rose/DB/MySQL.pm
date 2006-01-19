@@ -9,7 +9,7 @@ use DateTime::Format::MySQL;
 use Rose::DB;
 our @ISA = qw(Rose::DB);
 
-our $VERSION = '0.55';
+our $VERSION = '0.61';
 
 our $Debug = 0;
 
@@ -34,6 +34,22 @@ sub build_dsn
 }
 
 sub dbi_driver { 'mysql' }
+
+sub database_version
+{
+  my($self) = shift;
+  return $self->{'database_version'}  if(defined $self->{'database_version'});
+
+  my $vers = $self->dbh->get_info(18); # SQL_DBMS_VER
+
+  # Convert to an integer, e.g., 5.1.13 -> 5001013
+  if($vers =~ /^(\d+)\.(\d+)(?:\.(\d+))?/)
+  {
+    $vers = sprintf('%d%03d%03d', $1, $2, $3 || 0);
+  }
+
+  return $self->{'database_version'} = $vers;
+}
 
 # These assume no ` characters in column or table names.
 # Because, come on, who would do such a thing... :)
@@ -71,6 +87,42 @@ sub validate_timestamp_keyword
 #   #my($self, $limit, $offset) = @_;
 #   return join(', ', @_[2,1]);
 # }
+
+sub format_bitfield 
+{
+  my($self, $vec, $size) = @_;
+
+  $vec = Bit::Vector->new_Bin($size, $vec->to_Bin)  if($size);
+
+  # MySQL 5.0.3 or later requires this crap...
+  if($self->database_version >= 5_000_003)
+  {
+    return q(b') . $vec->to_Bin . q('); # 'CAST(' . $vec->to_Dec . ' AS UNSIGNED)';
+  }
+
+  return sprintf('%d', hex($vec->to_Hex));
+}
+
+sub should_inline_bitfield_values 
+{
+  # MySQL 5.0.3 or later requires this crap...
+  return $_[0]->{'should_inline_bitfield_values'} ||= 
+    (shift->database_version >= 5_000_003) ? 1 : 0;
+}
+
+sub select_bitfield_column_sql
+{
+  my($self, $name, $table_alias) = @_;
+
+  # MySQL 5.0.3 or later requires this crap...
+  if($self->database_version >= 5_000_003)
+  {
+    return q{CONCAT("b'", BIN(} . ($table_alias ? "$table_alias." : '') . 
+            $self->quote_column_name($name) . q{ + 0), "'")};
+  }
+
+  return $self->quote_column_name($name);
+}
 
 sub refine_dbi_column_info
 {
