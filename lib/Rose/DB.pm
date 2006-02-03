@@ -17,7 +17,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.62';
+our $VERSION = '0.63';
 
 our $Debug = 0;
 
@@ -100,7 +100,7 @@ use Rose::Object::MakeMethods::Generic
   'scalar' =>
   [
     qw(database dbi_driver schema catalog host port username 
-       password _dbh_refcount _origin_class id)
+       password _dbh_refcount id)
   ],
 
   'boolean' =>
@@ -116,7 +116,7 @@ use Rose::Object::MakeMethods::Generic
     'type',
     'date_handler',
     'server_time_zone',
-    'class',
+    #'class',
   ],
 
   'array' => 
@@ -314,6 +314,12 @@ sub new
   return $self;
 }
 
+sub class 
+{
+  my($self) = shift; 
+  return $self->{'_origin_class'} || ref $self;
+}
+
 sub init
 {
   my($self) = shift;
@@ -356,24 +362,6 @@ sub database_version
   my($self) = shift;
   return $self->{'database_version'}  if(defined $self->{'database_version'});
   return $self->{'database_version'} = $self->dbh->get_info(18); # SQL_DBMS_VER
-}
-
-sub init_class 
-{
-  my($self) = shift;
-
-  my $class = ref $self;
-
-  if($class =~ /^Rose::DB::/)
-  {
-    return 'Rose::DB';
-  }
-  elsif($class =~ /^((?:\w+::)*\w+)::__RoseDBPrivate__::/)
-  {
-    return $1;
-  }
-
-  return $class;
 }
 
 # These have to "cheat" to get the right values by going through
