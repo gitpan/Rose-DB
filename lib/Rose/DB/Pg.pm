@@ -2,12 +2,13 @@ package Rose::DB::Pg;
 
 use strict;
 
+use DateTime::Infinite;
 use DateTime::Format::Pg;
 
 use Rose::DB;
 our @ISA = qw(Rose::DB);
 
-our $VERSION = '0.60';
+our $VERSION = '0.67';
 
 our $Debug = 0;
 
@@ -180,6 +181,52 @@ sub format_array
       qq("$_") 
     }
   } @array) . '}';
+}
+
+sub parse_interval
+{
+  my($self, $value) = @_;
+
+  if(!defined $value || UNIVERSAL::isa($value, 'DateTime::Duration') || 
+     $self->validate_interval_keyword($value) || $value =~ /^\w+\(.*\)$/)
+  {
+    return $value;
+  }
+
+  my $dt_duration;
+  eval { $dt_duration = $self->date_handler->parse_interval($value) };
+
+  return $self->SUPER::parse_interval($value)  if($@);
+  return $dt_duration;
+}
+
+BEGIN
+{
+  require DateTime::Format::Pg;
+
+  # Handle DateTime::Format::Pg bug
+  # http://rt.cpan.org/Public/Bug/Display.html?id=18487  
+  if($DateTime::Format::Pg::VERSION < 0.11)
+  {
+    *format_interval = sub
+    {
+      my($self, $dur) = @_;
+      return $dur  if(!defined $dur || $self->validate_interval_keyword($dur) || $dur =~ /^\w+\(.*\)$/);
+      my $val = $self->date_handler->format_interval($dur);
+
+      $val =~ s/(\S+e\S+) seconds/sprintf('%f seconds', $1)/e;
+      return $val;
+    };
+  }
+  else
+  {
+    *format_interval = sub
+    {
+      my($self, $dur) = @_;
+      return $dur  if(!defined $dur || $self->validate_interval_keyword($dur) || $dur =~ /^\w+\(.*\)$/);
+      return $self->date_handler->format_interval($dur);
+    };
+  }
 }
 
 sub next_value_in_sequence
@@ -462,9 +509,9 @@ Rose::DB::Pg - PostgreSQL driver class for Rose::DB.
 
 =head1 DESCRIPTION
 
-This is the subclass that L<Rose::DB> blesses an object into when the C<driver> is "Pg".  This mapping of drivers to class names is configurable.  See the documentation for L<Rose::DB>'s C<new()> and C<driver_class()> methods for more information.
+This is the subclass that L<Rose::DB> blesses an object into when the L<driver|Rose::DB/driver> is "Pg".  This mapping of drivers to class names is configurable.  See the documentation for L<Rose::DB>'s L<new()|Rose::DB/new> and C<driver_class()|Rose::DB/driver_class> methods for more information.
 
-Using this class directly is not recommended.  Instead, use L<Rose::DB> and let it bless objects into the appropriate class for you, according to its C<driver_class()> mappings.
+Using this class directly is not recommended.  Instead, use L<Rose::DB> and let it bless objects into the appropriate class for you, according to its C<driver_class()|Rose::DB/driver_class> mappings.
 
 This class inherits from L<Rose::DB>.  B<Only the methods that are new or have  different behaviors are documented here.>  See the L<Rose::DB> documentation for information on the inherited methods.
 
@@ -476,7 +523,7 @@ This class inherits from L<Rose::DB>.  B<Only the methods that are new or have  
 
 Get or set the boolean value that determines whether or not dates are assumed to be in european dd/mm/yyyy format.  The default is to assume US mm/dd/yyyy format (because this is the default for PostgreSQL).
 
-This value will be passed to C<DateTime::Format::Pg> as the value of the C<european> parameter in the call to the constructor C<new()>.  This C<DateTime::Format::Pg> object is used by C<Rose::DB::Pg> to parse and format date-related column values in methods like C<parse_date>, C<format_date>, etc.
+This value will be passed to L<DateTime::Format::Pg> as the value of the C<european> parameter in the call to the constructor C<new()>.  This L<DateTime::Format::Pg> object is used by L<Rose::DB::Pg> to parse and format date-related column values in methods like L<parse_date|Rose::DB/parse_date>, L<format_date|Rose::DB/format_date>, etc.
 
 =item B<next_value_in_sequence SEQUENCE>
 
@@ -484,11 +531,11 @@ Advance the sequence named SEQUENCE and return the new value.  Returns undef if 
 
 =item B<server_time_zone [TZ]>
 
-Get or set the time zone used by the database server software.  TZ should be a time zone name that is understood by C<DateTime::TimeZone>.  The default value is "floating".
+Get or set the time zone used by the database server software.  TZ should be a time zone name that is understood by L<DateTime::TimeZone>.  The default value is "floating".
 
-This value will be passed to C<DateTime::Format::Pg> as the value of the C<server_tz> parameter in the call to the constructor C<new()>.  This C<DateTime::Format::Pg> object is used by C<Rose::DB::Pg> to parse and format date-related column values in methods like C<parse_date>, C<format_date>, etc.
+This value will be passed to L<DateTime::Format::Pg> as the value of the C<server_tz> parameter in the call to the constructor C<new()>.  This L<DateTime::Format::Pg> object is used by L<Rose::DB::Pg> to parse and format date-related column values in methods like L<parse_date|Rose::DB/parse_date>, L<format_date|Rose::DB/format_date>, etc.
 
-See the C<DateTime::TimeZone> documentation for acceptable values of TZ.
+See the L<DateTime::TimeZone> documentation for acceptable values of TZ.
 
 =back
 
@@ -500,9 +547,19 @@ See the C<DateTime::TimeZone> documentation for acceptable values of TZ.
 
 Given a reference to an array or a list of values, return a string formatted according to the rules of PostgreSQL's "ARRAY" column type.  Undef is returned if ARRAYREF points to an empty array or if LIST is not passed.  If the array or list contains undefined values, a fatal error will occur.
 
+=item B<format_interval DURATION>
+
+Given a L<DateTime::Duration> object, return a string formatted according to the rules of PostgreSQL's "INTERVAL" column type.  If DURATION is undefined, a L<DateTime::Duration> object, a valid interval keyword (according to L<validate_interval_keyword|Rose::DB/validate_interval_keyword>), or if it looks like a function call (matches C</^\w+\(.*\)$/>) then it is returned unmodified.
+
 =item B<parse_array STRING>
 
 Parse STRING and return a reference to an array.  STRING should be formatted according to PostgreSQL's "ARRAY" data type.  Undef is returned if STRING is undefined.
+
+=item B<parse_interval STRING>
+
+Parse STRING and return a L<DateTime::Duration> object.  STRING should be formatted according to the PostgreSQL native "interval" (years, months, days, hours, minutes, seconds) data type.
+
+If STRING is a L<DateTime::Duration> object, a valid interval keyword (according to L<validate_interval_keyword|Rose::DB/validate_interval_keyword>), or if it looks like a function call (matches C</^\w+\(.*\)$/>) then it is returned unmodified.  Otherwise, undef is returned if STRING could not be parsed as a valid "interval" value.
 
 =item B<validate_date_keyword STRING>
 
@@ -554,6 +611,6 @@ John C. Siracusa (siracusa@mindspring.com)
 
 =head1 COPYRIGHT
 
-Copyright (c) 2005 by John C. Siracusa.  All rights reserved.  This program is
+Copyright (c) 2006 by John C. Siracusa.  All rights reserved.  This program is
 free software; you can redistribute it and/or modify it under the same terms
 as Perl itself.
