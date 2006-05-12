@@ -6,8 +6,8 @@ use FindBin qw($Bin);
 
 use Rose::DB;
 
-BEGIN 
-{  
+BEGIN
+{
   Rose::DB->default_domain('test');
 
   #
@@ -61,6 +61,40 @@ BEGIN
   );
 
   #
+  # Oracle
+  #
+
+  # Main
+  Rose::DB->register_db(
+    domain   => 'test',
+    type     => 'oracle',
+    driver   => 'oracle',
+    database => 'test',
+    host     => 'localhost',
+    username => '',
+    password => '',
+    post_connect_sql =>
+    [
+      "alter session set nls_timestamp_format = 'YYYY-MM-DD HH24:MI:SS'",
+    ],
+  );
+
+  # Admin
+  Rose::DB->register_db(
+    domain   => 'test',
+    type     => 'oracle_admin',
+    driver   => 'oracle',
+    database => 'test',
+    host     => 'localhost',
+    username => '',
+    password => '',
+    post_connect_sql =>
+    [
+      "alter session set nls_timestamp_format = 'YYYY-MM-DD HH24:MI:SS'",
+    ],
+  );
+
+  #
   # MySQL
   #
 
@@ -96,7 +130,11 @@ BEGIN
     type     => 'informix',
     driver   => 'Informix',
     database => 'test@test',
-    connect_options => { AutoCommit => 1 },
+    connect_options => 
+    {
+      AutoCommit => 1, 
+      ((rand() < 0.5) ? (FetchHashKeyName => 'NAME_lc') : ()),
+    },
     post_connect_sql =>
     [
       'SET LOCK MODE TO WAIT 60',
@@ -110,7 +148,11 @@ BEGIN
     type     => 'informix_admin',
     driver   => 'Informix',
     database => 'test@test',
-    connect_options => { AutoCommit => 1 },
+    connect_options => 
+    {
+      AutoCommit => 1, 
+      ((rand() < 0.5) ? (FetchHashKeyName => 'NAME_lc') : ()),
+    },
     post_connect_sql =>
     [
       'SET LOCK MODE TO WAIT 60',
@@ -148,7 +190,11 @@ BEGIN
       driver   => 'sqlite',
       database => "$Bin/sqlite.db",
       auto_create     => 0,
-      connect_options => { AutoCommit => 1 },
+      connect_options => 
+      {
+        AutoCommit => 1, 
+        ((rand() < 0.5) ? (FetchHashKeyName => 'NAME_lc') : ()),
+      },
       post_connect_sql =>
       [
         'PRAGMA synchronous = OFF',
@@ -162,7 +208,11 @@ BEGIN
       type     => 'sqlite_admin',
       driver   => 'sqlite',
       database => "$Bin/sqlite.db",
-      connect_options => { AutoCommit => 1 },
+      connect_options => 
+      {
+        AutoCommit => 1, 
+        ((rand() < 0.5) ? (FetchHashKeyName => 'NAME_lc') : ()),
+      },
       post_connect_sql =>
       [
         'PRAGMA synchronous = OFF',
@@ -171,12 +221,12 @@ BEGIN
     );
   }
 
-  my @types = qw(pg pg_with_schema pg_admin mysql mysql_admin 
+  my @types = qw(oracle oracle_admin pg pg_with_schema pg_admin mysql mysql_admin
                  informix informix_admin sqlite sqlite_admin);
 
   unless($Rose::DB::Object::Test::NoDefaults)
   {
-    foreach my $db_type (qw(PG MYSQL INFORMIX))
+    foreach my $db_type (qw(ORACLE PG MYSQL INFORMIX))
     {
       if(my $dsn = $ENV{"RDBO_${db_type}_DSN"})
       {
@@ -205,7 +255,7 @@ BEGIN
   }
 }
 
-Rose::DB->load_driver_classes(qw(pg MySQL informix SQLItE));
+Rose::DB->load_driver_classes(qw(ORAcle pg MySQL informix SQLItE));
 
 # Subclass testing
 package My::DB;
@@ -214,9 +264,15 @@ package My::DB;
 package My::DB2;
 @My::DB2::ISA = qw(My::DB);
 
+My::DB2->driver_class(Oracle => 'My::DB2::Oracle');
 My::DB2->driver_class(Pg => 'My::DB2::Pg');
 My::DB2->driver_class(mysql => 'My::DB2::MySQL');
 My::DB2->driver_class(Informix => 'My::DB2::Informix');
+
+package My::DB2::Oracle;
+@My::DB2::Oracle::ISA = qw(Rose::DB::Oracle);
+
+sub subclass_special_oracle { 'ORACLE' }
 
 package My::DB2::Pg;
 @My::DB2::Pg::ISA = qw(Rose::DB::Pg);
