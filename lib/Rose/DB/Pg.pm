@@ -7,7 +7,7 @@ use DateTime::Format::Pg;
 
 use Rose::DB;
 
-our $VERSION = '0.70';
+our $VERSION = '0.72';
 
 our $Debug = 0;
 
@@ -50,6 +50,8 @@ sub likes_lowercase_table_names    { 1 }
 sub likes_lowercase_schema_names   { 1 }
 sub likes_lowercase_catalog_names  { 1 }
 sub likes_lowercase_sequence_names { 1 }
+
+sub supports_arbitrary_defaults_on_insert { 1 }
 
 sub supports_schema { 1 }
 
@@ -323,18 +325,26 @@ sub refine_dbi_column_info
     }
   }
 
-  # Pg has some odd names for types.  Convert them to standard forms.
-  if($col_info->{'TYPE_NAME'} eq 'character varying')
+  my $type_name = $col_info->{'TYPE_NAME'};
+
+  # Pg has some odd/different names for types.  Convert them to standard forms.
+  if($type_name eq 'character varying')
   {
     $col_info->{'TYPE_NAME'} = 'varchar';
   }
-  elsif($col_info->{'TYPE_NAME'} eq 'bit')
+  elsif($type_name eq 'bit')
   {
     $col_info->{'TYPE_NAME'} = 'bits';
   }
-  elsif($col_info->{'TYPE_NAME'} eq 'real')
+  elsif($type_name eq 'real')
   {
     $col_info->{'TYPE_NAME'} = 'float';
+  }
+  elsif($type_name eq 'time without time zone')
+  {
+    $col_info->{'TYPE_NAME'} = 'time';
+    $col_info->{'pg_type'} =~ /^time(?:\((\d+)\))? without time zone$/i;
+    $col_info->{'TIME_PRECISION'} = $1 || 0;
   }
 
   # Pg does not populate COLUMN_SIZE correctly for bit fields, so
@@ -411,7 +421,7 @@ sub parse_dbi_column_info_default
 
       return $default;
     }
-    # Handle sequence-based defaults elsewhere (if at all)
+    # Handle sequence-based defaults elsewhere
     elsif(/^nextval\(/)
     {
       return undef;
@@ -575,7 +585,7 @@ Returns true if STRING is a valid keyword for the PostgreSQL "date" data type.  
     tomorrow
     yesterday
 
-The keywords are case sensitive.  Any string that looks like a function call (matches /^\w+\(.*\)$/) is also considered a valid date keyword.
+The keywords are case sensitive.  Any string that looks like a function call (matches C</^\w+\(.*\)$/>) is also considered a valid date keyword.
 
 =item B<validate_datetime_keyword STRING>
 
@@ -590,7 +600,16 @@ Returns true if STRING is a valid keyword for the PostgreSQL "datetime" data typ
     tomorrow
     yesterday
 
-The keywords are case sensitive.  Any string that looks like a function call (matches /^\w+\(.*\)$/) is also considered a valid datetime keyword.
+The keywords are case sensitive.  Any string that looks like a function call (matches C</^\w+\(.*\)$/>) is also considered a valid datetime keyword.
+
+=item B<validate_time_keyword STRING>
+
+Returns true if STRING is a valid keyword for the PostgreSQL "time" data type, false otherwise.  Valid timestamp keywords are:
+
+    allballs
+    now
+
+The keywords are case sensitive.  Any string that looks like a function call (matches C</^\w+\(.*\)$/>) is also considered a valid timestamp keyword.
 
 =item B<validate_timestamp_keyword STRING>
 
@@ -605,7 +624,7 @@ Returns true if STRING is a valid keyword for the PostgreSQL "timestamp" data ty
     tomorrow
     yesterday
 
-The keywords are case sensitive.  Any string that looks like a function call (matches /^\w+\(.*\)$/) is also considered a valid timestamp keyword.
+The keywords are case sensitive.  Any string that looks like a function call (matches C</^\w+\(.*\)$/>) is also considered a valid timestamp keyword.
 
 =back
 

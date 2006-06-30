@@ -6,6 +6,7 @@ use DBI;
 use Carp();
 use Bit::Vector::Overload;
 
+use Time::Clock;
 use Rose::DateTime::Util();
 
 use Rose::DB::Registry;
@@ -17,7 +18,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.71';
+our $VERSION = '0.72';
 
 our $Debug = 0;
 
@@ -1129,27 +1130,32 @@ sub parse_boolean
 # Date formatting
 
 sub format_date
-{  
-  return $_[1]  if($_[0]->validate_date_keyword($_[1]) || $_[1] =~ /^\w+\(.*\)$/);
-  return $_[0]->date_handler->format_date($_[1]);
+{
+  my($self, $date) = @_;
+  return $date  if($self->validate_date_keyword($date) || $date =~ /^\w+\(.*\)$/);
+  return $self->date_handler->format_date($date);
 }
 
 sub format_datetime
 {
-  return $_[1]  if($_[0]->validate_datetime_keyword($_[1]) || $_[1] =~ /^\w+\(.*\)$/);
-  return $_[0]->date_handler->format_datetime($_[1]);
+  my($self, $date) = @_;
+  return $date  if($self->validate_datetime_keyword($date) || $date =~ /^\w+\(.*\)$/);
+  return $self->date_handler->format_datetime($date);
 }
 
 sub format_time
-{  
-  return $_[1]  if($_[0]->validate_time_keyword($_[1])) || $_[1] =~ /^\w+\(.*\)$/;
-  return $_[0]->date_handler->format_time($_[1]);
+{
+  my($self, $time, $precision) = @_;
+  return $time  if($self->validate_time_keyword($time) || $time =~ /^\w+\(.*\)$/);
+  $precision ||= '';
+  return $time->format("%H:%M:%S%${precision}n");
 }
 
 sub format_timestamp
 {  
-  return $_[1]  if($_[0]->validate_timestamp_keyword($_[1]) || $_[1] =~ /^\w+\(.*\)$/);
-  return $_[0]->date_handler->format_timestamp($_[1]);
+  my($self, $date) = @_;
+  return $date  if($self->validate_timestamp_keyword($date) || $date =~ /^\w+\(.*\)$/);
+  return $self->date_handler->format_timestamp($date);
 }
 
 # Date parsing
@@ -1197,22 +1203,6 @@ sub parse_datetime
   return $dt;
 }
 
-sub parse_time
-{  
-  return $_[1]  if($_[0]->validate_time_keyword($_[1]));
-
-  my $dt;
-  eval { $dt = $_[0]->date_handler->parse_time($_[1]) };
-
-  if($@)
-  {
-    $_[0]->error("Could not parse time '$_[1]' - $@");
-    return undef;
-  }
-
-  return $dt;
-}
-
 sub parse_timestamp
 {  
   my($self, $value) = @_;
@@ -1233,6 +1223,43 @@ sub parse_timestamp
   }
 
   return $dt;
+}
+
+sub parse_time
+{
+  my($self, $value) = @_;
+
+  if(!defined $value || UNIVERSAL::isa($value, 'Time::Clock') || 
+     $self->validate_time_keyword($value) || $value =~ /^\w+\(.*\)$/)
+  {
+    return $value;
+  }
+
+  my $time;
+
+  eval 
+  {
+    $time = Time::Clock->new->parse($value);
+  };
+
+  if($@)
+  {
+    eval
+    {
+      my $dt = $self->date_handler->parse_time($value);
+      # Using parse()/strftime() is faster than using the 
+      # Time::Clock constructor and the DateTime accessors.
+      $time = Time::Clock->new->parse($dt->strftime('%H:%M:%S.%N'));
+    };
+    
+    if($@)
+    {
+      $self->error("Could not parse time '$value' - Time::Clock::parse() failed and $@");
+      return undef;
+    }
+  }
+
+  return $time;
 }
 
 sub parse_bitfield
@@ -1655,6 +1682,7 @@ sub next_value_in_sequence
 sub auto_sequence_name { undef }
 
 sub supports_limit_with_offset { 1 }
+sub supports_arbitrary_defaults_on_insert { 0 }
 
 sub likes_redundant_join_conditions { 0 }
 sub likes_lowercase_table_names     { 0 }
@@ -2667,6 +2695,10 @@ Converts the L<DateTime> object DATETIME into the appropriate format for the "da
 
 Converts the L<DateTime::Duration> object DURATION into the appropriate format for the interval (years, months, days, hours, minutes, seconds) data type of the current data source. If DURATION is undefined, a L<DateTime::Duration> object, a valid interval keyword (according to L<validate_interval_keyword|/validate_interval_keyword>), or if it looks like a function call (matches C</^\w+\(.*\)$/>) then it is returned unmodified.
 
+=item B<format_time TIMECLOCK>
+
+Converts the L<Time::Clock> object TIMECLOCK into the appropriate format for the time (hour, minute, second, fractional seconds) data type of the current data source.  Fractional seconds are optional, and the useful precision may vary depending on the data source.
+
 =item B<format_timestamp DATETIME>
 
 Converts the L<DateTime> object DATETIME into the appropriate format for the timestamp (month, day, year, hour, minute, second, fractional seconds) data type of the current data source.  Fractional seconds are optional, and the useful precision may vary depending on the data source.
@@ -2713,6 +2745,12 @@ Parse STRING and return a L<DateTime::Duration> object.  STRING should be format
 
 If STRING is a L<DateTime::Duration> object, a valid interval keyword (according to L<validate_interval_keyword|/validate_interval_keyword>), or if it looks like a function call (matches C</^\w+\(.*\)$/>) then it is returned unmodified.  Otherwise, undef is returned if STRING could not be parsed as a valid "interval" value.
 
+=item B<parse_time STRING>
+
+Parse STRING and return a L<Time::Clock> object.  STRING should be formatted according to the data source's native "time" (hour, minute, second, fractional seconds) data type.
+
+If STRING is a valid time keyword (according to L<validate_time_keyword|/validate_time_keyword>) or if it looks like a function call (matches C</^\w+\(.*\)$/>) it is returned unmodified.  Returns undef if STRING could not be parsed as a valid "time" value.
+
 =item B<parse_timestamp STRING>
 
 Parse STRING and return a L<DateTime> object.  STRING should be formatted according to the data source's native "timestamp" (month, day, year, hour, minute, second, fractional seconds) data type.  Fractional seconds are optional, and the acceptable precision may vary depending on the data source.  
@@ -2734,6 +2772,10 @@ Returns true if STRING is a valid keyword for the "datetime" (month, day, year, 
 =item B<validate_interval_keyword STRING>
 
 Returns true if STRING is a valid keyword for the "interval" (years, months, days, hours, minutes, seconds) data type of the current data source, false otherwise.  The default implementation always returns false.
+
+=item B<validate_time_keyword STRING>
+
+Returns true if STRING is a valid keyword for the "time" (hour, minute, second, fractional seconds) data type of the current data source, false otherwise.  The default implementation always returns false.
 
 =item B<validate_timestamp_keyword STRING>
 
