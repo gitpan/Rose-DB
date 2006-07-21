@@ -4,7 +4,7 @@ use strict;
 
 use Rose::DateTime::Util();
 
-our $VERSION = '0.71';
+our $VERSION = '0.742';
 
 our $Debug = 0;
 
@@ -416,6 +416,9 @@ sub format_limit_with_offset
   #my($self, $limit, $offset) = @_;
   return @_ > 2 ? "SKIP $_[2] FIRST $_[1]" : "FIRST $_[1]";
 }
+
+sub supports_select_from_subselect { 0 } # can't handle serial columns in multiset
+sub format_select_from_subselect { "\nTABLE(MULTISET(($_[1])))\n  " }
 
 #
 # Introspection

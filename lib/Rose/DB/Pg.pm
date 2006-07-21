@@ -7,7 +7,7 @@ use DateTime::Format::Pg;
 
 use Rose::DB;
 
-our $VERSION = '0.721';
+our $VERSION = '0.722';
 
 our $Debug = 0;
 
@@ -52,6 +52,7 @@ sub likes_lowercase_catalog_names  { 1 }
 sub likes_lowercase_sequence_names { 1 }
 
 sub supports_arbitrary_defaults_on_insert { 1 }
+sub supports_select_from_subselect        { 1 }
 
 sub supports_schema { 1 }
 
@@ -189,7 +190,7 @@ sub parse_interval
 
   my $dt_duration;
   eval { $dt_duration = $self->date_handler->parse_interval($value) };
-  
+
   return $self->Rose::DB::parse_interval($value, $end_of_month_mode)  if($@);
 
   if(defined $end_of_month_mode && $dt_duration)
