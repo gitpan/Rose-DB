@@ -5,6 +5,7 @@ use strict;
 use Carp();
 
 use DateTime::Format::MySQL;
+use SQL::ReservedWords::MySQL();
 
 use Rose::DB;
 
@@ -214,8 +215,7 @@ sub refine_dbi_column_info
 }
 
 sub supports_arbitrary_defaults_on_insert { 1 }
-
-sub likes_redundant_join_conditions { 1 }
+sub likes_redundant_join_conditions       { 1 }
 
 sub supports_on_duplicate_key_update
 {
@@ -234,8 +234,10 @@ sub supports_on_duplicate_key_update
   return $self->{'supports_on_duplicate_key_update'} = 0;
 }
 
-our %Reserved_Words = map { $_ => 1 } qw(read for case);
-sub is_reserved_word { $Reserved_Words{lc $_[1]} }
+#our %Reserved_Words = map { $_ => 1 } qw(read for case);
+#sub is_reserved_word { $Reserved_Words{lc $_[1]} }
+
+*is_reserved_word = \&SQL::ReservedWords::MySQL::is_reserved;
 
 #
 # Introspection

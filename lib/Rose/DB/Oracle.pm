@@ -2,17 +2,14 @@ package Rose::DB::Oracle;
 
 use strict;
 
+use SQL::ReservedWords::Oracle();
+
 use Rose::DB;
 
-our $Debug    = 0;
-our @ISA      = qw(Rose::DB);
-our $VERSION  = '0.73';
+our $Debug = 0;
 
-# -----------------------------------------------
-#
-# Object methods in alphabetical order.
-#
-# -----------------------------------------------
+# Overshot distribution version, so freeze until it catches up
+our $VERSION  = '0.73'; 
 
 sub auto_sequence_name
 {
@@ -28,8 +25,6 @@ sub auto_sequence_name
   return lc "${table}_${column}_seq";
 }
 
-# -----------------------------------------------
-
 sub build_dsn
 {
   my($self_or_class, %args) = @_;
@@ -43,8 +38,6 @@ sub build_dsn
 
   return "dbi:Oracle:$database";
 }
-
-# -----------------------------------------------
 
 sub database_version
 {
@@ -64,11 +57,7 @@ sub database_version
   return $self->{'database_version'} = $version;
 }
 
-# -----------------------------------------------
-
 sub dbi_driver { 'Oracle' }
-
-# -----------------------------------------------
 
 sub list_tables
 {
@@ -101,8 +90,6 @@ sub list_tables
   return wantarray ? @tables : \@tables;
 }
 
-# -----------------------------------------------
-
 sub next_value_in_sequence
 {
   my($self, $seq) = @_;
@@ -130,6 +117,10 @@ sub next_value_in_sequence
 
   return $id;
 }
+
+*is_reserved_word = \&SQL::ReservedWords::Oracle::is_reserved;
+
+sub supports_schema { 1 }
 
 1;
 

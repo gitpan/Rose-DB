@@ -1,7 +1,7 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         Rose-DB
-version:      0.722
+version:      0.723
 version_from: lib/Rose/DB.pm
 installdirs:  site
 requires:
@@ -12,6 +12,7 @@ requires:
     DBI:                           0
     Rose::DateTime::Util:          0.52
     Rose::Object:                  0
+    SQL::ReservedWords:            0
     Test::More:                    0
     Time::Clock:                   0
 
