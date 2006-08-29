@@ -8,7 +8,7 @@ use SQL::ReservedWords::PostgreSQL();
 
 use Rose::DB;
 
-our $VERSION = '0.723';
+our $VERSION = '0.724';
 
 our $Debug = 0;
 
@@ -415,7 +415,7 @@ sub parse_dbi_column_info_default
     }
     # Example: 'value'::character varying
     # Example: ('now'::text)::timestamp(0)
-    elsif(/^\(*'(.+)'::.+$/)
+    elsif(/^\(*'(.*)'::.+$/)
     {
       my $default = $1;
 

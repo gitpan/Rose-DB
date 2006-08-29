@@ -19,7 +19,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.723';
+our $VERSION = '0.724';
 
 our $Debug = 0;
 
@@ -171,10 +171,14 @@ sub setup_dynamic_class_for_driver
 
   unless($Rebless{$class,$driver_class})
   {
-    unless($Class_Loaded{$driver_class})
+    no strict 'refs';
+    unless($Class_Loaded{$driver_class} || @{"${driver_class}::ISA"})
     {
-      eval "require $driver_class"; # ignore errors
+      eval "require $driver_class";
+      Carp::croak "Could not load driver class '$driver_class' - $@"  if($@);
     }
+
+    $Class_Loaded{$driver_class}++;
 
     # Make a new driver class based on the current class
     my $new_class = $class . '::__RoseDBPrivate__::' . $driver_class;
@@ -374,12 +378,10 @@ sub load_driver_class
   my $driver_class = $class->driver_class($arg) || $arg;
 
   no strict 'refs';
-  unless(defined ${"${driver_class}::VERSION"} || @{"${driver_class}::ISA"})
+  unless(defined ${"${driver_class}::VERSION"})
   {
     eval "require $driver_class";
-
-    Carp::croak "Could not load driver class '$driver_class' - $@"
-      if($@ && !UNIVERSAL::isa($driver_class, 'Rose::DB'));
+    Carp::croak "Could not load driver class '$driver_class' - $@"  if($@);
   }
 
   $Class_Loaded{$driver_class}++;
