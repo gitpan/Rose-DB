@@ -19,7 +19,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.724';
+our $VERSION = '0.725';
 
 our $Debug = 0;
 
@@ -1148,12 +1148,33 @@ sub format_datetime
   return $self->date_handler->format_datetime($date);
 }
 
+use constant HHMMSS_PRECISION => 6;
+use constant HHMM_PRECISION   => 4;
+
 sub format_time
 {
   my($self, $time, $precision) = @_;
   return $time  if($self->validate_time_keyword($time) || $time =~ /^\w+\(.*\)$/);
-  $precision ||= '';
-  return $time->format("%H:%M:%S%${precision}n");
+  
+  if(defined $precision)
+  {
+    if($precision > HHMMSS_PRECISION)
+    {
+      my $scale = $precision - HHMMSS_PRECISION;
+      return $time->format("%H:%M:%S%${scale}n");
+    }
+    elsif($precision == HHMMSS_PRECISION)
+    {
+      return $time->format("%H:%M:%S");
+    }
+    elsif($precision == HHMM_PRECISION)
+    {
+      return $time->format("%H:%M");
+    }
+  }
+
+  # Punt
+  return $time->as_string;
 }
 
 sub format_timestamp
@@ -2447,7 +2468,7 @@ Given a L<DBI> statement handle, returns the value of the auto-generated unique 
 
 =item B<list_tables>
 
-Returns a list (in list context) or reference to an array (in scalar context) of table in the database.  The current L<catalog|/catalog> and L<schema|/schema> are honored.
+Returns a list (in list context) or reference to an array (in scalar context) of tables in the database.  The current L<catalog|/catalog> and L<schema|/schema> are honored.
 
 =item B<quote_column_name NAME>
 

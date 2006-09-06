@@ -80,11 +80,11 @@ sub format_datetime_year_to_minute
   return Rose::DateTime::Util::format_date($_[1], '%Y-%m-%d %H:%M');
 }
 
-sub format_time
-{  
-  return $_[1]  if($_[0]->validate_time_keyword($_[1]));
-  return Rose::DateTime::Util::format_date($_[1], '%H:%M:%S');
-}
+# sub format_time
+# {
+#   return $_[1]  if($_[0]->validate_time_keyword($_[1]));
+#   return Rose::DateTime::Util::format_date($_[1], '%H:%M:%S');
+# }
 
 sub format_timestamp
 {  
@@ -442,11 +442,15 @@ sub list_tables
 
     my @table_info = $dbh->func('user', '_tables');
 
+    my $schema = $self->schema;
+
     #if($args{'include_views'})
     #{
     #  my @view_info = $dbh->func('view', '_tables');
     #  push(@table_info, @view_info);
     #}
+
+    my %seen;
 
     foreach my $item (@table_info)
     {
@@ -462,9 +466,22 @@ sub list_tables
       #
       # "jsiracusa                       ".test
 
-      if($item =~ /^(?: "(?:""|[^"]+)+" | [^".]+ ) \. (?: "((?:""|[^"]+)+)" | ([^"]+) )$/x)
+      if($item =~ /^(?: "((?:""|[^"]+)+)" | ([^"]+) ) \. (?: "((?:""|[^"]+)+)" | ([^"]+) )$/x)
       {
-        push(@tables, defined $1 ? $1 : $2);
+        my $user  = defined $1 ? $1 : $2;
+        my $table = defined $3 ? $3 : $4;
+
+        for($user, $table)
+        {
+          s/""/"/g;
+        }
+
+        next  if($seen{$table}++);
+
+        if(!defined $schema || $schema eq $user)
+        {
+          push(@tables, $table);
+        }
       }
       else
       {
@@ -513,7 +530,13 @@ sub _get_primary_key_column_names
 
   unless(defined $owner)
   {
-    die "Could not find owner for table ", $table;
+    #die "Could not find owner for table ", $table;
+
+    # Failure to find an owner is sometimes caused by 
+    # DBD::Informix::Metadata's annoying habit of returning
+    # sequences along with the list of tables.  So we'll just
+    # say that it has no primary key columns.
+    return [];
   }
 
   # Then comes this monster query to get the primary key column names.
