@@ -19,7 +19,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.726';
+our $VERSION = '0.727';
 
 our $Debug = 0;
 
@@ -669,6 +669,8 @@ sub release_dbh
 
 use constant DID_PCSQL_KEY => 'private_rose_db_did_post_connect_sql';
 
+sub has_dbh { defined shift->{'dbh'} }
+
 sub init_dbh
 {
   my($self) = shift;
@@ -1155,7 +1157,7 @@ sub format_time
 {
   my($self, $time, $precision) = @_;
   return $time  if($self->validate_time_keyword($time) || $time =~ /^\w+\(.*\)$/);
-  
+
   if(defined $precision)
   {
     if($precision > HHMMSS_PRECISION)
@@ -1730,6 +1732,12 @@ sub format_limit_with_offset
   return @_ > 2 ? "$_[1] OFFSET $_[2]" : $_[1];
 }
 
+sub format_table_with_alias
+{
+  #my($self, $table, $alias, $hints) = @_;
+  return "$_[1] $_[2]";
+}
+
 sub supports_on_duplicate_key_update { 0 }
 
 #
@@ -1753,6 +1761,18 @@ sub refine_dbi_column_info
   return;
 }
 
+sub refine_dbi_foreign_key_info
+{
+  my($self, $fk_info) = @_;
+
+  # Unquote column names
+  foreach my $param (qw(FK_COLUMN_NAME UK_COLUMN_NAME))
+  {
+    $fk_info->{$param} = $self->unquote_column_name($fk_info->{$param});
+  }
+
+  return;
+}
 
 sub parse_dbi_column_info_default { $_[1] }
 
@@ -1798,7 +1818,7 @@ sub STORABLE_freeze
 
   return  if($cloning);
 
-  # Ditch the DBI $dbh and pull teh password out of its closure
+  # Ditch the DBI $dbh and pull the password out of its closure
   my $db = { %$self };
   $db->{'dbh'} = undef;
   $db->{'password'} = $self->password;
@@ -2448,6 +2468,10 @@ Execute arbitrary code within a single transaction, rolling back if any of the c
 =item B<error [MSG]>
 
 Get or set the error message associated with the last failure.  If a method fails, check this attribute to get the reason for the failure in the form of a text message.
+
+=item B<has_dbh>
+
+Returns true if the object has a L<DBI> database handle (L<dbh|/dbh>), false if it does not.
 
 =item B<has_primary_key [ TABLE | PARAMS ]>
 
