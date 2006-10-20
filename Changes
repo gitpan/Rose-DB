@@ -1,3 +1,10 @@
+0.728 (10.20.2006) - John Siracusa <siracusa@mindspring.com>
+
+    * Added the registered_domains(), registered_types(), and dump()
+      methods to Rose::DB::Registry.
+    * Added a dump() method to Rose::DB::Registry::Entry.
+    * Clone::PP is now a prerequisite.
+
 0.727 (10.06.2006) - John Siracusa <siracusa@mindspring.com>
 
     * Added the has_dbh() method.
