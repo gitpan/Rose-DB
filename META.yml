@@ -1,21 +1,22 @@
-# http://module-build.sourceforge.net/META-spec.html
-#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
-name:         Rose-DB
-version:      0.728
-version_from: lib/Rose/DB.pm
-installdirs:  site
-requires:
+--- #YAML:1.0
+name:                Rose-DB
+version:             0.729
+abstract:            ~
+license:             ~
+generated_by:        ExtUtils::MakeMaker version 6.31
+distribution_type:   module
+requires:     
     Bit::Vector::Overload:         6.4
     Clone::PP:                     0
     DateTime::Duration:            0
     DateTime::Format::MySQL:       0
     DateTime::Format::Pg:          0.11
     DBI:                           0
-    Rose::DateTime::Util:          0.531
+    Rose::DateTime::Util:          0.532
     Rose::Object:                  0.82
     SQL::ReservedWords:            0
     Test::More:                    0
     Time::Clock:                   0
-
-distribution_type: module
-generated_by: ExtUtils::MakeMaker version 6.30
+meta-spec:
+    url:     http://module-build.sourceforge.net/META-spec-v1.2.html
+    version: 1.2
