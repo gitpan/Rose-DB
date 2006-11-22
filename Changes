@@ -1,3 +1,9 @@
+0.731 (11.22.2006) - John Siracusa <siracusa@mindspring.com>
+
+    * Added support for MySQL's SET data type. (Patch by Ask Bjørn Hansen)
+    * Fixed an Informix DSN construction bug.
+    * Corrected the skip-counts for Informix tests.
+
 0.730 (11.07.2006) - John Siracusa <siracusa@mindspring.com>
 
     * Documented the ability to set the dbh().

@@ -19,7 +19,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.730';
+our $VERSION = '0.731';
 
 our $Debug = 0;
 
@@ -1966,6 +1966,8 @@ Rose::DB - A DBI wrapper and abstraction layer.
 L<Rose::DB> is a wrapper and abstraction layer for L<DBI>-related functionality.  A L<Rose::DB> object "has a" L<DBI> object; it is not a subclass of L<DBI>.
 
 Please see the L<tutorial|Rose::DB::Tutorial> (perldoc Rose::DB::Tutorial) for an example usage scenario that reflects "best practices" for this module.
+
+B<Tip:> Are you looking for an object-relational mapper (ORM)?  If so, please see the L<Rose::DB::Object> module.  L<Rose::DB::Object> is an ORM that uses this module to manage its database connections.  L<Rose::DB> alone is simply a data source abstraction layer; it is not an ORM.
 
 =head1 DATABASE SUPPORT
 
