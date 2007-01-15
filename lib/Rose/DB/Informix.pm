@@ -4,7 +4,7 @@ use strict;
 
 use Rose::DateTime::Util();
 
-our $VERSION = '0.754'; # XXX: whoops, overshot version number...
+our $VERSION = '0.759';
 
 our $Debug = 0;
 
@@ -450,10 +450,22 @@ sub supports_limit_with_offset
   return 0;
 }
 
+
 sub format_limit_with_offset
 {
-  #my($self, $limit, $offset) = @_;
-  return @_ > 2 ? "SKIP $_[2] FIRST $_[1]" : "FIRST $_[1]";
+  my($self, $limit, $offset, $args) = @_;
+
+  delete $args->{'limit'};
+  delete $args->{'offset'};
+
+  if(defined $offset)
+  {
+    $args->{'limit_prefix'} = "SKIP $offset FIRST $limit";
+  }
+  else
+  {
+    $args->{'limit_prefix'} = "FIRST $limit";
+  }
 }
 
 sub supports_select_from_subselect { 0 } # can't handle serial columns in multiset
@@ -897,6 +909,6 @@ John C. Siracusa (siracusa@mindspring.com)
 
 =head1 COPYRIGHT
 
-Copyright (c) 2006 by John C. Siracusa.  All rights reserved.  This program is
+Copyright (c) 2007 by John C. Siracusa.  All rights reserved.  This program is
 free software; you can redistribute it and/or modify it under the same terms
 as Perl itself.

@@ -19,7 +19,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.731';
+our $VERSION = '0.732';
 
 our $Debug = 0;
 
@@ -104,8 +104,7 @@ use Rose::Object::MakeMethods::Generic
 (
   'scalar' =>
   [
-    qw(database dbi_driver schema catalog host port username 
-       _dbh_refcount id)
+    qw(dbi_driver username _dbh_refcount id)
   ],
 
   'boolean' =>
@@ -288,11 +287,13 @@ sub new
 
   my %args = @_;
 
+  my $allow_empty = $args{'driver'} && !($args{'type'} || $args{'domain'});
+
   my $domain = 
-    exists $args{'domain'} ? $args{'domain'} : $class->default_domain;
+    exists $args{'domain'} ? delete $args{'domain'} : $class->default_domain;
 
   my $type = 
-    exists $args{'type'} ? $args{'type'} : $class->default_type;
+    exists $args{'type'} ? delete $args{'type'} : $class->default_type;
 
   my $db_info;
 
@@ -306,12 +307,14 @@ sub new
   {
     $db_info = $registry->{$domain}{$type}
   }
-  else
+  elsif(!$allow_empty)
   {
-    Carp::croak "No database information found for domain '$domain' and type '$type'";
+    Carp::croak "No database information found for domain '$domain' and ",
+                "type '$type' and no driver type specified in call to ",
+                "$class->new(...)";
   }
 
-  my $driver = $db_info->{'driver'}; 
+  my $driver = $db_info->{'driver'} || $args{'driver'}; 
 
   Carp::croak "No driver found for domain '$domain' and type '$type'"
     unless(defined $driver);
@@ -350,9 +353,14 @@ sub new
   }
 
   $self->class($class);
-  $self->{'id'} = "$domain\0$type";
+
+  $self->{'id'}     = "$domain\0$type";
+  $self->{'type'}   = $type;
+  $self->{'domain'} = $domain;
 
   $self->init(@_);
+
+  $self->init_db_info;
 
   return $self;
 }
@@ -364,12 +372,12 @@ sub class
   return $self->{'_origin_class'} || ref $self;
 }
 
-sub init
-{
-  my($self) = shift;
-  $self->SUPER::init(@_);
-  $self->init_db_info;
-}
+# sub init
+# {
+#   my($self) = shift;
+#   $self->SUPER::init(@_);
+#   $self->init_db_info;
+# }
 
 sub load_driver_class
 {
@@ -401,6 +409,71 @@ sub load_driver_classes
   }
 
   return;
+}
+
+sub database
+{
+  my($self) = shift;
+  
+  if(@_)
+  {
+    $self->{'dsn'} = undef  if($self->{'dsn'});
+    return $self->{'database'} = shift;
+  }
+
+  return $self->{'database'};
+}
+
+sub schema
+{
+  my($self) = shift;
+  
+  if(@_)
+  {
+    $self->{'dsn'} = undef  if($self->{'dsn'});
+    return $self->{'schema'} = shift;
+  }
+
+  return $self->{'schema'};
+}
+
+sub catalog
+{
+  my($self) = shift;
+  
+  if(@_)
+  {
+    $self->{'dsn'} = undef  if($self->{'dsn'});
+    return $self->{'catalog'} = shift;
+  }
+
+  return $self->{'catalog'};
+}
+
+sub host
+{
+  my($self) = shift;
+  
+  if(@_)
+  {
+    $self->{'dsn'} = undef  if($self->{'dsn'});
+    return $self->{'host'} = shift;
+  }
+
+  return $self->{'host'};
+}
+
+sub port
+{
+  my($self) = shift;
+  
+  if(@_)
+  {
+    $self->{'dsn'} = undef  if($self->{'dsn'});
+    return $self->{'port'} = shift;
+  }
+
+  return $self->{'port'};
 }
 
 sub database_version
@@ -439,6 +512,8 @@ sub init_db_info
 {
   my($self) = shift;
 
+  return 1  if($self->{'dsn'});
+
   my $class = ref $self;
 
   my $domain = $self->domain;
@@ -458,6 +533,7 @@ sub init_db_info
   }
   else
   {
+    return 1  if($self->{'driver'});
     Carp::croak "No database information found for domain '$domain' and type '$type'";
   }
 
@@ -477,14 +553,12 @@ sub init_db_info
 
   $self->driver($db_info->{'driver'});
 
-  my $dsn = $db_info->{'dsn'} ||= $self->build_dsn(domain => $domain, 
-                                                   type   => $type,
-                                                   %$db_info);
-
   while(my($field, $value) = each(%$db_info))
   {
-    next  if($field eq 'connect_options');
-    $self->$field($value);
+    if($field ne 'connect_options' && defined $value && !defined $self->{$field})
+    {
+      $self->$field($value);
+    }
   }
 
   return 1;
@@ -510,31 +584,43 @@ sub dsn
 {
   my($self) = shift;
 
-  return $self->{'dsn'}  unless(@_);
-
-  $self->{'dsn'} = shift;
-
-  if(DBI->can('parse_dsn'))
+  unless(@_)
   {
-    if(my($scheme, $driver, $attr_string, $attr_hash, $driver_dsn) =
-         DBI->parse_dsn($self->{'dsn'}))
-    {
-      $self->driver($driver)  if($driver);
-
-      if($attr_string)
-      {
-        $self->_parsed_dsn($attr_hash, $driver_dsn);
-      }
-    }
-    else { $self->error("Couldn't parse DSN '$self->{'dsn'}'") }
+    return $self->{'dsn'} || $self->build_dsn(%$self);
   }
 
-  return $self->{'dsn'};
+  if(my $dsn = shift)
+  {
+    foreach my $method (qw(database host port))
+    {
+      $self->$method(undef);
+    }
+
+    $self->init($self->parse_dsn($dsn));
+    return $self->{'dsn'} = $dsn;
+  }
+  else
+  {
+    $self->{'dsn'} = undef;
+    return $self->build_dsn(%$self);
+  }
 }
 
-sub database_from_dsn
+my %DSN_Attr_Method =
+(
+  db       => 'database',
+  dbname   => 'database',
+  user     => 'username',
+  hostname => 'host',
+  hostaddr => 'host',
+  sid      => 'database',
+);
+
+sub dsn_attribute_to_db_method { $DSN_Attr_Method{$_[1]} }
+
+sub parse_dsn
 {
-  my($self_or_class, $dsn) = @_;
+  my($self, $dsn) = @_;
 
   my($scheme, $driver, $attr_string, $attr_hash, $driver_dsn);
 
@@ -550,26 +636,46 @@ sub database_from_dsn
     ($scheme, $driver, $attr_string, $attr_hash, $driver_dsn) = 
       DBI->parse_dsn($dsn);
   }
-
-  my $db = $attr_hash->{'dbname'} || $attr_hash->{'database'};
-
-  unless($db)
+  else
   {
-    # Wing it...
-    unless($attr_string ||= $driver_dsn)
-    {
-      ($attr_string = $dsn) =~ s/^dbi:\w+://i;
-    }
-
-    $attr_string =~ /(?:dbname|database)=([^; ]+)|^([^; ]+)/i;
-
-    $db = $1 || $2;
+    ($scheme, $driver, $attr_string, $driver_dsn) = 
+      ($dsn =~ /^((?i)dbi) : (\w+) : (?: \( ([^)]+) \) : )? (.*)/x);
   }
 
-  return $db;
+  my %init =
+  (
+    dbi_driver => $driver,
+    driver     => $driver,
+  );
+
+  while($driver_dsn =~ /\G(\w+)=([^;]+)(?:;|$)?/g)
+  {
+    my($name, $value) = ($1, $2);
+
+    if(my $method = $self->dsn_attribute_to_db_method($name))
+    {
+      $init{$method} = $value;
+    }
+    elsif($self->can($name))
+    {
+      $init{$name} = $value;
+    }
+  }
+
+  unless($init{'database'})
+  {
+    $init{'database'} = $driver_dsn;
+  }
+
+  return %init;
 }
 
-sub _parsed_dsn { }
+sub database_from_dsn
+{
+  my($self_or_class, $dsn) = @_;
+  my %attrs = $self_or_class->parse_dsn($dsn);
+  return $attrs{'database'};
+}
 
 sub dbh
 {
@@ -591,16 +697,16 @@ sub driver
 {
   if(@_ > 1)
   {
-    $_[1] = lc $_[1];
+    my $driver = lc $_[1];
 
-    if(defined $_[1] && defined $_[0]->{'driver'} && $_[0]->{'driver'} ne $_[1])
+    if(defined $driver && defined $_[0]->{'driver'} && $_[0]->{'driver'} ne $driver)
     {
       Carp::croak "Attempt to change driver from '$_[0]->{'driver'}' to ",
-                  "'$_[1]' detected.  The driver cannot be changed after ",
+                  "'$driver' detected.  The driver cannot be changed after ",
                   "object creation.";
     }
 
-    return $_[0]->{'driver'} = $_[1];
+    return $_[0]->{'driver'} = $driver;
   }
 
   return $_[0]->{'driver'};
@@ -667,24 +773,58 @@ sub release_dbh
   return 1;
 }
 
-use constant DID_PCSQL_KEY => 'private_rose_db_did_post_connect_sql';
+sub dbh_attribute
+{
+  my($self, $name) = (shift, shift);
+  
+  if(@_)
+  {
+    if(my $dbh = $self->{'dbh'})
+    {
+      return $self->{'dbh'}{$name} = $self->{"__dbh_attr_$name"} = shift;
+    }
+    else
+    {
+      return $self->{"__dbh_attr_$name"} = shift;
+    }
+  }
+  
+  if(my $dbh = $self->{'dbh'})
+  {
+    return $self->{'dbh'}{$name};
+  }
+  else
+  {
+    return $self->{"__dbh_attr_$name"};
+  }
+}
+
+sub dbh_attribute_boolean
+{
+  my($self, $name) = (shift, shift);
+  return $self->dbh_attribute($name, (@_ ? ($_[0] ? 1 : 0) : ()));
+}
 
 sub has_dbh { defined shift->{'dbh'} }
+
+sub dbh_attributes { () }
+
+use constant DID_PCSQL_KEY => 'private_rose_db_did_post_connect_sql';
 
 sub init_dbh
 {
   my($self) = shift;
 
-  $self->init_db_info;
-
   my $options = $self->connect_options;
 
-  $Debug && warn "DBI->connect('", $self->dsn, "', '", $self->username, "', ...)\n";
+  my $dsn = $self->dsn;
+
+  $Debug && warn "DBI->connect('$dsn', '", $self->username, "', ...)\n";
 
   $self->{'error'} = undef;
   $self->{'database_version'} = undef;
 
-  my $dbh = DBI->connect($self->dsn, $self->username, $self->password, $options);
+  my $dbh = DBI->connect($dsn, $self->username, $self->password, $options);
 
   unless($dbh)
   {
@@ -695,7 +835,12 @@ sub init_dbh
   $self->{'_dbh_refcount'}++;
   #$Debug && warn "CONNECT $dbh ", join(':', (caller(3))[0,2]), "\n";
 
-  #$self->_update_driver;
+  foreach my $attr ($self->dbh_attributes)
+  {
+    my $val = $self->dbh_attribute($attr);
+    next  unless(defined $val);
+    $dbh->{$attr} = $val;
+  }
 
   if((my $sqls = $self->post_connect_sql) && !$dbh->{DID_PCSQL_KEY()})
   {
@@ -948,6 +1093,8 @@ sub unquote_column_name
 {
   my($self_or_class, $name) = @_;
 
+  no warnings 'uninitialized';
+
   # handle quoted strings with quotes doubled inside them
   if($name =~ /^(['"`])(.+)\1$/)
   {
@@ -989,6 +1136,8 @@ BEGIN
     *quote_identifier = \&quote_identifier_fallback;
   }
 }
+
+*quote_identifier_for_sequence = \&quote_identifier;
 
 sub quote_column_with_table 
 {
@@ -1127,8 +1276,8 @@ sub parse_boolean
 {
   my($self, $value) = @_;
   return $value  if($self->validate_boolean_keyword($_[1]) || $_[1] =~ /^\w+\(.*\)$/);
-  return 1  if($value =~ /^(?:t(?:rue)?|y(?:es)?|1)$/);
-  return 0  if($value =~ /^(?:f(?:alse)?|no?|0)$/);
+  return 1  if($value =~ /^(?:t(?:rue)?|y(?:es)?|1)$/i);
+  return 0  if($value =~ /^(?:f(?:alse)?|no?|0)$/i);
 
   $self->error("Invalid boolean value: '$value'");
   return undef;
@@ -1726,10 +1875,23 @@ sub likes_implicit_joins            { 0 }
 sub supports_schema  { 0 }
 sub supports_catalog { 0 }
 
+sub use_auto_sequence_name { 0 }
+
 sub format_limit_with_offset
 {
-  #my($self, $limit, $offset) = @_;
-  return @_ > 2 ? "$_[1] OFFSET $_[2]" : $_[1];
+  my($self, $limit, $offset, $args) = @_;
+
+  delete $args->{'limit'};
+  delete $args->{'offset'};
+
+  if(defined $offset)
+  {
+    $args->{'limit_suffix'} = "LIMIT $limit OFFSET $offset";
+  }
+  else
+  {
+    $args->{'limit_suffix'} = "LIMIT $limit";
+  }
 }
 
 sub format_table_with_alias
@@ -1765,10 +1927,15 @@ sub refine_dbi_foreign_key_info
 {
   my($self, $fk_info) = @_;
 
-  # Unquote column names
-  foreach my $param (qw(FK_COLUMN_NAME UK_COLUMN_NAME))
+  # Unquote names
+  foreach my $name (qw(NAME COLUMN_NAME DATA_TYPE TABLE_NAME TABLE_CAT TABLE_SCHEM))
   {
-    $fk_info->{$param} = $self->unquote_column_name($fk_info->{$param});
+    foreach my $prefix (qw(FK_ UK_))
+    {
+      my $param = $prefix . $name;
+      $fk_info->{$param} = $self->unquote_column_name($fk_info->{$param})
+        if(exists $fk_info->{$param});
+    }
   }
 
   return;
@@ -1978,7 +2145,7 @@ L<Rose::DB> currently supports the following L<DBI> database drivers:
     DBD::SQLite   (SQLite)
     DBD::Informix (Informix)
 
-Oracle (L<DBD::Oracle>) is I<partially> supported, but some features may not yet work correctly.
+Oracle (L<DBD::Oracle>) is mostly supported, but some features may not yet work correctly.
 
 L<Rose::DB> will attempt to service an unsupported database using a L<generic|Rose::DB::Generic> implementation that may or may not work.  Support for more drivers may be added in the future.  Patches are welcome.
 
@@ -2381,6 +2548,13 @@ Each L<Rose::DB> object is associated with a particular data source, defined by 
 
 The default L<type|/type> and L<domain|/domain> can be set using the L<default_type|/default_type> and L<default_domain|/default_domain> class methods.  See the L<"Data Source Abstraction"> section for more information on data sources.
 
+Object attributes are set based on the L<registry|/registry> entry specified by the C<type> and C<domain> parameters.  This registry entry must exist or a fatal error will occur (with one exception; see below).  Any additional PARAMS will override the values taken from the registry entry.
+
+If C<type> and C<domain> parameters are not passed, but a C<driver> parameter is passed, then a new "empty" object will be returned.  Examples:
+
+    # This is ok, even if no registered data sources exist
+    $db = Rose::DB->new(driver => 'sqlite'); 
+
 The object returned by L<new|/new> will be derived from a database-specific driver class, chosen based on the L<driver|/driver> value of the selected data source.  If there is no registered data source for the specified L<type|/type> and L<domain|/domain>, a fatal error will occur.
 
 The default driver-to-class mapping is as follows:
@@ -2646,11 +2820,9 @@ Driver names should only use lowercase letters.
 
 Get or set the L<DBI> DSN (Data Source Name) passed to the call to L<DBI>'s L<connect|DBI/connect> method.
 
-If using L<DBI> version 1.43 or later, an attempt is made to parse the new DSN using L<DBI>'s L<parse_dsn|DBI/parse_dsn> method.  Any parts successfully extracted are assigned to the corresponding L<Rose::DB> attributes (e.g., host, port, database).
+An attempt is made to parse the new DSN.  Any parts successfully extracted are assigned to the corresponding L<Rose::DB> attributes (e.g., L<host|/host>, L<port|/port>, L<database|/database>).  If no value could be extracted for an attribute, it is set to undef.
 
-Note that an explicitly set DSN may render some other attributes inaccurate.  For example, the DSN may contain a host name that is different than the object's current L<host|/host> value.  If the host name is not successfully extracted from the DSN and applied to the object's L<host|/host> attribute, then the two values are out of sync.  I recommend not setting the DSN value explicitly unless you are also willing to manually synchronize (or ignore) the corresponding object attributes.
-
-If the DSN is never set explicitly, it is initialized with the DSN constructed from the appropriate object attribute values when L<init_db_info|/init_db_info> or L<connect|/connect> is called.
+If the DSN is never set explicitly, it is built automatically based on the relevant object attributes.
 
 =item B<host [NAME]>
 
@@ -2874,6 +3046,6 @@ John C. Siracusa (siracusa@mindspring.com)
 
 =head1 COPYRIGHT
 
-Copyright (c) 2006 by John C. Siracusa.  All rights reserved.  This program is
+Copyright (c) 2007 by John C. Siracusa.  All rights reserved.  This program is
 free software; you can redistribute it and/or modify it under the same terms
 as Perl itself.
