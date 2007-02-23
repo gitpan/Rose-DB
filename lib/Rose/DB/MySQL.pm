@@ -9,9 +9,16 @@ use SQL::ReservedWords::MySQL();
 
 use Rose::DB;
 
-our $VERSION = '0.731';
+our $VERSION = '0.732';
 
 our $Debug = 0;
+
+use Rose::Class::MakeMethods::Generic
+(
+  inheritable_scalar => 'supports_schema',
+);
+
+__PACKAGE__->supports_schema(1);
 
 #
 # Object methods
@@ -38,7 +45,6 @@ sub dbi_driver { 'mysql' }
 sub mysql_auto_reconnect { shift->dbh_attribute_boolean('mysql_auto_reconnect', @_) }
 sub mysql_enable_utf8    { shift->dbh_attribute_boolean('mysql_enable_utf8', @_) }
 sub mysql_use_result     { shift->dbh_attribute_boolean('mysql_use_result', @_) }
-
 
 sub dbh_attributes { qw(mysql_auto_reconnect mysql_use_result mysql_enable_utf8) }
 

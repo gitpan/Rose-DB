@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                Rose-DB
-version:             0.732
+version:             0.733
 abstract:            ~
 license:             ~
 generated_by:        ExtUtils::MakeMaker version 6.31
