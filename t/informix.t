@@ -52,14 +52,7 @@ SKIP:
     is($db2->$field(), $db->$field(), "$field()");
   }
 
-  if($db->dbh->{'ix_ProductVersion'} >= 1000)
-  {
-    ok($db->supports_limit_with_offset, 'supports_limit_with_offset');
-  }
-  else
-  {
-    ok(!$db->supports_limit_with_offset, 'supports_limit_with_offset');
-  }
+  ok(defined $db->supports_limit_with_offset, 'supports_limit_with_offset');
 
   $db->disconnect;
   $db2->disconnect;
@@ -213,7 +206,7 @@ SKIP:
   is($db->format_datetime_year_to_second(parse_date('12/31/2002 12:34:56', 'floating')), '2002-12-31 12:34:56', "format_datetime_year_to_second() floating");
   is($db->format_datetime_year_to_minute(parse_date('12/31/2002 12:34:56', 'floating')), '2002-12-31 12:34', "format_datetime_year_to_minute() floating");
   is($db->format_datetime_year_to_month(parse_date('12/31/2002 12:34:56', 'floating')), '2002-12', "format_datetime_year_to_month() floating");
-  
+
   is($db->format_timestamp(parse_date('12/31/2002 12:34:56.12345', 'floating')), '2002-12-31 12:34:56.12345', "format_timestamp() floating");
   #is($db->format_time(parse_date('12/31/2002 12:34:56', 'floating')), '12:34:56', "format_datetime() floating");
 

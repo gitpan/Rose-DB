@@ -15,7 +15,7 @@ BEGIN
   }
   else
   {
-    Test::More->import(tests => 64);
+    Test::More->import(tests => 65);
   }
 }
 
@@ -121,7 +121,7 @@ SKIP:
 {
   unless(have_db('mysql'))
   {
-    skip("MySQL connection tests", 27);
+    skip("MySQL connection tests", 28);
   }
 
   eval { $db->connect };
@@ -194,7 +194,7 @@ SKIP:
     $db = Rose::DB->new($attr => (1, 2)[int(rand(2))]);
     is($db->$attr(), 1, "$attr 1");
     $db->connect;
-    
+
     if($attr eq 'mysql_auto_reconnect') # can't read back the other two
     {
       is($db->$attr(), 1, "$attr 2");
@@ -202,6 +202,17 @@ SKIP:
     }
     else { SKIP: { skip("$attr dbh read-back", 2) } }
   }
+
+  TEST:
+  {
+    my $dbh = Rose::DB->new->retain_dbh;
+    $db = Rose::DB->new(dbh => $dbh);
+  }
+
+  $db->retain_dbh;
+  $db->release_dbh;
+
+  ok($db->{'dbh'}{'Active'}, 'retain stuffed dbh');
 }
 
 $db->dsn('dbi:mysql:dbname=dbfoo;host=hfoo;port=pfoo');
@@ -227,7 +238,7 @@ $db = Rose::DB->new
   type   => 'default',
   dsn    => "dbi:mysql:mydb",
 );
-  
+
 is($db->database, 'mydb', 'parse_dsn() 1');
 
 sub lookup_ip
