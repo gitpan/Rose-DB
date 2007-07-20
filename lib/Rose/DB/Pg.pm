@@ -52,6 +52,7 @@ sub likes_lowercase_schema_names   { 1 }
 sub likes_lowercase_catalog_names  { 1 }
 sub likes_lowercase_sequence_names { 1 }
 
+sub supports_multi_column_count_distinct  { 0 }
 sub supports_arbitrary_defaults_on_insert { 1 }
 sub supports_select_from_subselect        { 1 }
 
@@ -652,7 +653,7 @@ The keywords are case sensitive.  Any string that looks like a function call (ma
 
 =head1 AUTHOR
 
-John C. Siracusa (siracusa@mindspring.com)
+John C. Siracusa (siracusa@gmail.com)
 
 =head1 COPYRIGHT
 

@@ -9,7 +9,7 @@ use SQL::ReservedWords::MySQL();
 
 use Rose::DB;
 
-our $VERSION = '0.732';
+our $VERSION = '0.735';
 
 our $Debug = 0;
 
@@ -23,6 +23,8 @@ __PACKAGE__->supports_schema(1);
 #
 # Object methods
 #
+
+sub registration_schema { shift->database }
 
 sub build_dsn
 {
@@ -85,6 +87,41 @@ sub quote_table_name
   return qq(`$name`);
 }
 
+sub list_tables
+{
+  my($self, %args) = @_;
+
+  my $types = $args{'include_views'} ? "'TABLE','VIEW'" : 'TABLE';
+  my @tables;
+
+  my $schema = $self->schema;
+  $schema = $self->database  unless(defined $schema);
+
+  eval
+  {
+    my $dbh = $self->dbh or die $self->error;
+
+    local $dbh->{'RaiseError'} = 1;
+    local $dbh->{'FetchHashKeyName'} = 'NAME';
+
+    my $sth = $dbh->table_info($self->catalog, $schema, '%', $types);
+
+    $sth->execute;
+
+    while(my $table_info = $sth->fetchrow_hashref)
+    {
+      push(@tables, $self->unquote_table_name($table_info->{'TABLE_NAME'}));
+    }
+  };
+
+  if($@)
+  {
+    Carp::croak "Could not list tables from ", $self->dsn, " - $@";
+  }
+
+  return wantarray ? @tables : \@tables;
+}
+
 sub init_date_handler { DateTime::Format::MySQL->new }
 
 sub insertid_param { 'mysql_insertid' }
@@ -100,7 +137,7 @@ sub format_table_with_alias
   if($hints && $version >= 3_023_012)
   {
     my $sql = "$table $alias ";
-
+$DB::single = 1;
     # "ignore index()" and "use index()" were added in 3.23.12 (07 March 2000)
     # "force index()" was added in 4.0.9 (09 January 2003)
     my @types = (($version >= 4_000_009 ? 'force' : ()), qw(use ignore));
@@ -238,7 +275,12 @@ sub parse_set
   my($self) = shift;
 
   return $_[0]  if(ref $_[0] eq 'ARRAY');
-  return [ @_ ] if(@_ > 1);
+
+  if(@_ > 1 && !ref $_[1])
+  {
+    pop(@_);
+    return [ @_ ];
+  }
 
   my $val = $_[0];
 
@@ -527,7 +569,7 @@ Any string that looks like a function call (matches /^\w+\(.*\)$/) is also consi
 
 =head1 AUTHOR
 
-John C. Siracusa (siracusa@mindspring.com)
+John C. Siracusa (siracusa@gmail.com)
 
 =head1 COPYRIGHT
 

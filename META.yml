@@ -1,9 +1,9 @@
 --- #YAML:1.0
 name:                Rose-DB
-version:             0.734
+version:             0.735
 abstract:            ~
 license:             ~
-generated_by:        ExtUtils::MakeMaker version 6.32
+generated_by:        ExtUtils::MakeMaker version 6.36
 distribution_type:   module
 requires:     
     Bit::Vector::Overload:         6.4
