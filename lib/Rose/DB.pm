@@ -10,6 +10,7 @@ use SQL::ReservedWords();
 use Time::Clock;
 use Rose::DateTime::Util();
 
+use Rose::DB::Cache;
 use Rose::DB::Registry;
 use Rose::DB::Registry::Entry;
 use Rose::DB::Constants qw(IN_TRANSACTION);
@@ -19,7 +20,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.735';
+our $VERSION = '0.736';
 
 our $Debug = 0;
 
@@ -36,6 +37,8 @@ use Rose::Class::MakeMethods::Generic
     'registry',
     'max_array_characters',
     'max_interval_characters',
+    '_db_cache',
+    'db_cache_class',
   ]
 );
 
@@ -53,6 +56,7 @@ use Rose::Class::MakeMethods::Generic
   ],
 );
 
+__PACKAGE__->db_cache_class('Rose::DB::Cache');
 __PACKAGE__->default_domain('default');
 __PACKAGE__->default_type('default');
 
@@ -275,6 +279,63 @@ sub driver_class
 
   return $class->_driver_class($driver);
 }
+
+sub db_cache
+{
+  my($class) = shift;
+  
+  if(@_)
+  {
+    return $class->_db_cache(@_);
+  }
+  
+  if(my $cache = $class->_db_cache)
+  {
+    return $cache;
+  }
+  
+  my $cache_class = $class->db_cache_class;
+  eval "use $cache_class";
+  die "Could not load db cache class '$cache_class' - $@"  if($@);
+  
+  return $class->_db_cache($cache_class->new);
+}
+
+sub new_or_cached
+{
+  my($class) = shift;
+
+  @_ = (type => $_[0])  if(@_ == 1);
+
+  my %args = @_;
+
+  $args{'domain'} = $class->default_domain unless(exists $args{'domain'});
+  $args{'type'}   = $class->default_type   unless(exists $args{'type'});
+
+  #$Debug && warn "New or cached db type: $args{'type'}, domain: $args{'domain'}\n";
+
+  if(my $db = $class->db_cache->get_db(%args))
+  {
+    $Debug && warn "$$ $class Returning cached db (", $db->domain, ', ', $db->type,
+      ") $db from ", $class->db_cache, "\n";
+    return $db;
+  }
+
+  if($Debug)
+  {
+    my $db = $class->new(@_);
+    $Debug && warn "$$ $class Setting cached db $db (", 
+       join(', ', map { $args{$_} } qw(domain type)), 
+       ") in ", $class->db_cache, "\n";
+    return $class->db_cache->set_db($class->new(@_));
+  }
+  else
+  {
+    return $class->db_cache->set_db($class->new(@_));
+  }
+}
+
+sub clear_db_cache { shift->db_cache->clear(@_) }
 
 #
 # Object methods
@@ -811,6 +872,13 @@ sub has_dbh { defined shift->{'dbh'} }
 
 sub dbh_attributes { () }
 
+sub dbi_connect
+{
+  shift;
+  $Debug && warn "DBI->connect('$_[1]', '$_[2]', ...)\n";
+  DBI->connect(@_);
+}
+
 use constant DID_PCSQL_KEY => 'private_rose_db_did_post_connect_sql';
 
 sub init_dbh
@@ -821,12 +889,10 @@ sub init_dbh
 
   my $dsn = $self->dsn;
 
-  $Debug && warn "DBI->connect('$dsn', '", $self->username, "', ...)\n";
-
   $self->{'error'} = undef;
   $self->{'database_version'} = undef;
 
-  my $dbh = DBI->connect($dsn, $self->username, $self->password, $options);
+  my $dbh = $self->dbi_connect($dsn, $self->username, $self->password, $options);
 
   unless($dbh)
   {
@@ -2525,6 +2591,14 @@ This makes the "dev/aux" data source point to the same registry entry as the "de
 
 Attempt to load both the YAML-based L<ROSEDBRC|/ROSEDBRC> and Perl-based L<ROSEDB_DEVINIT|/ROSEDB_DEVINIT> fix-up files, if any exist, in that order.  The L<ROSEDBRC|/ROSEDBRC> file will modify the data source L<registry|/registry> of the calling class.  See the L<ENVIRONMENT|/ENVIRONMENT> section above for more information.
 
+=item B<db_cache [CACHE]>
+
+Get or set the L<Rose::DB::Cache>-derived object used to cache L<Rose::DB> objects on behalf of this class.  If no such object exists, a new cache object of L<db_cache_class|/db_cache_class> class will be created, stored, and returned.
+
+=item B<db_cache_class [CLASS]>
+
+Get or set the name of the L<Rose::DB::Cache>-derived class used to cache L<Rose::DB> objects on behalf of this class.  The default value is L<Rose::DB::Cache>.
+
 =item B<db_exists PARAMS>
 
 Returns true of the data source specified by PARAMS is registered, false otherwise.  PARAMS are name/value pairs for C<domain> and C<type>.  If they are omitted, they default to L<default_domain|/default_domain> and L<default_type|/default_type>, respectively.  If default values do not exist, a fatal error will occur.  If a single value is passed instead of name/value pairs, it is taken as the value of the C<type> parameter.
@@ -2720,7 +2794,7 @@ is roughly equivalent to this:
 
 =back
 
-=head1 CONSTRUCTOR
+=head1 CONSTRUCTORS
 
 =over 4
 
@@ -2759,6 +2833,12 @@ The default driver-to-class mapping is as follows:
 
 You can change this mapping with the L<driver_class|/driver_class> class method.
 
+=item B<new_or_cached PARAMS>
+
+Constructs or returns a L<Rose::DB> object based on PARAMS, where PARAMS are any name/value pairs that can be passed to the L<new|/new> method.  If the L<db_cache|/db_cache>'s L<get_db|Rose::DB::Cache/get_db> method returns an existing L<Rose::DB> object that matches PARAMS, then it is returned.  Otherwise, a L<new|/new>  L<Rose::DB> object is created, L<stored|Rose::DB::Cache/set_db> in the L<db_cache|/db_cache>, then returned.
+
+See the L<Rose::DB::Cache> documentation to learn about the cache API and the default implementation.
+
 =back
 
 =head1 OBJECT METHODS
@@ -2781,7 +2861,7 @@ If the "AutoCommit" database handle attribute is true, the handle is assumed to 
 
 =item B<connect>
 
-Constructs and connects the L<DBI> database handle for the current data source.  If there is no registered data source for the current L<type|/type> and L<domain|/domain>, a fatal error will occur.
+Constructs and connects the L<DBI> database handle for the current data source, calling L<dbi_connect|/dbi_connect> to create a new L<DBI> database handle if none exists.  If there is no registered data source for the current L<type|/type> and L<domain|/domain>, a fatal error will occur.
 
 If any L<post_connect_sql|/post_connect_sql> statement failed to execute, the database handle is disconnected and then discarded.
 
@@ -2804,11 +2884,17 @@ Returns a reference to the connect options has in scalar context, or a list of n
 
 =item B<dbh [DBH]>
 
-Get or set the L<DBI> database handle connected to the current data source.  If the database handle does not exist or is not already connected, this method will do everything necessary to do so.
+Get or set the L<DBI> database handle connected to the current data source.  If the database handle does not exist or is not already connected, this method will do everything necessary to do so, including calling L<dbi_connect|/dbi_connect> to create a new L<DBI> database handle if none exists.
 
 Returns undef if the database handle could not be constructed and connected.  If there is no registered data source for the current C<type> and C<domain>, a fatal error will occur.
 
 Note: when setting this attribute, you I<must> pass in a L<DBI> database handle that has the same L<driver|/driver> as the object.  For example, if the L<driver|/driver> is C<mysql> then the L<DBI> database handle must be connected to a MySQL database.  Passing in a mismatched database handle will cause a fatal error.
+
+=item B<dbi_connect [ARGS]>
+
+This method calls L<DBI-E<gt>connect(...)|DBI/connect>, passing all ARGS and returning all values.  This method has no affect on the internal state of the object.  Use the L<connect|/connect> method to create and store a new L<database handle|/dbh> in the object.
+
+Override this method in your L<Rose::DB> subclass if you want to use a different method (e.g. L<DBI-E<gt>connect_cached()|DBI/connect_cached>) to create database handles.
 
 =item B<disconnect>
 
@@ -3232,9 +3318,7 @@ L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Rose-DB>
 
 =head1 CONTRIBUTORS
 
-Ron Savage
-
-Lucian Dragus
+Peter Karman, Lucian Dragus, Ron Savage
 
 =head1 AUTHOR
 

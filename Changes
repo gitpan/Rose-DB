@@ -1,3 +1,9 @@
+0.736 (11.13.2007) - John Siracusa <siracusa@gmail.com>
+
+    * Added new_or_cached() method and associated caching framework.
+    * Added dbi_connect() method.  (Patch by Peter Karman)
+    * Removed mistakenly checked in breakpoint.
+
 0.735 (07.21.2007) - John Siracusa <siracusa@gmail.com>
 
     * Improved parsing of SET values.
