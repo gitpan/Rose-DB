@@ -20,7 +20,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.737';
+our $VERSION = '0.738';
 
 our $Debug = 0;
 
@@ -283,21 +283,21 @@ sub driver_class
 sub db_cache
 {
   my($class) = shift;
-  
+
   if(@_)
   {
     return $class->_db_cache(@_);
   }
-  
+
   if(my $cache = $class->_db_cache)
   {
     return $cache;
   }
-  
+
   my $cache_class = $class->db_cache_class;
   eval "use $cache_class";
   die "Could not load db cache class '$cache_class' - $@"  if($@);
-  
+
   return $class->_db_cache($cache_class->new);
 }
 
@@ -899,7 +899,7 @@ sub init_dbh
   }
 
   $self->{'_dbh_refcount'}++;
-  
+
   if($dbh->{'private_rose_db_inited'})
   {
     # Someone else owns this dbh
@@ -929,14 +929,14 @@ sub init_dbh
           $dbh->do($sql) or die "$sql - " . $dbh->errstr;
         }
       };
-  
+
       if($@)
       {
         $self->error("Could not do post-connect SQL: $@");
         $dbh->disconnect;
         return undef;
       }
-  
+
       $dbh->{DID_PCSQL_KEY()} = 1;
     }
   }
@@ -1597,7 +1597,7 @@ sub parse_array
 
   while($val =~ s/(?:"((?:[^"\\]+|\\.)*)"|([^",]+))(?:,|$)//)
   {
-    push(@array, (defined $1) ? $1 : $2);
+    push(@array, map { $_ eq 'NULL' ? undef : $_ } (defined $1 ? $1 : $2));
   }
 
   return \@array;
@@ -1607,13 +1607,17 @@ sub format_array
 {
   my($self) = shift;
 
-  my @array = (ref $_[0]) ? @{$_[0]} : @_;
+  return undef  unless(ref $_[0] || defined $_[0]);
 
-  return undef  unless(@array && defined $array[0]);
+  my @array = (ref $_[0]) ? @{$_[0]} : @_;
 
   my $str = '{' . join(',', map 
   {
-    if(/^[-+]?\d+(?:\.\d*)?$/)
+    if(!defined $_)
+    {
+      'NULL'
+    }
+    elsif(/^[-+]?\d+(?:\.\d*)?$/)
     {
       $_
     }
@@ -3338,6 +3342,6 @@ John C. Siracusa (siracusa@gmail.com)
 
 =head1 COPYRIGHT
 
-Copyright (c) 2007 by John C. Siracusa.  All rights reserved.  This program is
+Copyright (c) 2008 by John C. Siracusa.  All rights reserved.  This program is
 free software; you can redistribute it and/or modify it under the same terms
 as Perl itself.

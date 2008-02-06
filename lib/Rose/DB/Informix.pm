@@ -43,6 +43,23 @@ sub generate_primary_key_placeholders
 # accept everything without quotes.
 sub is_reserved_word { 0 }
 
+sub refine_dbi_column_info
+{
+  my($self, $col_info, $meta) = @_;
+
+  $self->Rose::DB::refine_dbi_column_info($col_info);
+
+  my $type_name = $col_info->{'TYPE_NAME'};
+
+  # Handle "INT8" big integers
+  if($type_name eq 'int' && $col_info->{'informix_collength'} == 10)
+  {
+    $col_info->{'TYPE_NAME'} = 'bigint';
+  }
+
+  return;
+}
+
 # Boolean formatting and parsing
 
 sub format_boolean { $_[1] ? 't' : 'f' }
@@ -385,7 +402,7 @@ sub parse_set
   while($val =~ s/(?:'((?:[^'\\]+|\\.)*)'|([^',]+))(?:,|$)//)
   {
     push(@set, (defined $1) ? $1 : $2);
-    
+
     if($numeric)
     {
       $set[-1] =~ s/\s+//g;
@@ -1037,6 +1054,6 @@ John C. Siracusa (siracusa@gmail.com)
 
 =head1 COPYRIGHT
 
-Copyright (c) 2007 by John C. Siracusa.  All rights reserved.  This program is
+Copyright (c) 2008 by John C. Siracusa.  All rights reserved.  This program is
 free software; you can redistribute it and/or modify it under the same terms
 as Perl itself.
