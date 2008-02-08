@@ -1,3 +1,12 @@
+0.739 (02.08.2008) - John Siracusa <siracusa@gmail.com>
+
+    * Caching of db objects during mod_perl server start-up is now turned
+      off by default, with new API to turn it back on and do the necessary
+      pre-fork clean-up that this entails.  This change solved a segmentation
+      fault problem triggered in DBD::Informix when database handles created
+      in the parent were not properly disconnected prior to the first fork of
+      the apache process.
+
 0.738 (02.06.2008) - John Siracusa <siracusa@gmail.com>
 
     * The Informix INT8 column type is now detected and mapped to "bigint"

@@ -4,9 +4,10 @@ use strict;
 
 use base 'Rose::Object';
 
+use Scalar::Util qw(refaddr);
 use Rose::DB::Cache::Entry;
 
-our $VERSION = '0.736';
+our $VERSION = '0.739';
 
 our $Debug = 0;
 
@@ -15,15 +16,77 @@ use Rose::Class::MakeMethods::Generic
   inheritable_scalar =>
   [
     'entry_class',
-  ]
+    '_default_use_cache_during_apache_startup',
+  ],
 );
 
 __PACKAGE__->entry_class('Rose::DB::Cache::Entry');
+__PACKAGE__->default_use_cache_during_apache_startup(0);
+
+sub default_use_cache_during_apache_startup
+{
+  my($class) = shift;
+  return $class->_default_use_cache_during_apache_startup($_[0] ? 1 : 0)  if(@_);
+  return  $class->_default_use_cache_during_apache_startup;
+}
+
+sub use_cache_during_apache_startup
+{
+  my($self) = shift;
+
+  return $self->{'use_cache_during_apache_startup'} = $_[0] ? 1 : 0  if(@_);
+  
+  if(defined $self->{'use_cache_during_apache_startup'})
+  {
+    return $self->{'use_cache_during_apache_startup'};
+  }
+  else
+  {
+    return $self->{'use_cache_during_apache_startup'} = 
+      ref($self)->default_use_cache_during_apache_startup;
+  }
+}
+
+sub prepare_for_apache_fork
+{
+  my($self) = shift;
+
+  foreach my $entry ($self->db_cache_entries)
+  {
+    if($entry->created_during_apache_startup)
+    {
+      my $db = $entry->db;
+      $Debug && warn "$$ Disconnecting and undef-ing ", $db->dbh, " contained in $db";
+      $db->dbh->disconnect;
+      $db->dbh(undef);
+      $db = undef;
+      $Debug && warn "$$ Deleting cache entry for $db";
+      delete $self->{'cache'}{$entry->key};
+    }
+  }
+}
 
 sub build_cache_key
 {
   my($class, %args) = @_;
   return join("\0", $args{'domain'}, $args{'type'});
+}
+
+QUIET:
+{
+  no warnings 'uninitialized';
+  use constant MOD_PERL_1     => ($ENV{'MOD_PERL'} && !$ENV{'MOD_PERL_API_VERSION'})     ? 1 : 0;
+  use constant MOD_PERL_2     => ($ENV{'MOD_PERL'} && $ENV{'MOD_PERL_API_VERSION'} == 2) ? 1 : 0;
+  use constant APACHE_DBI     => ($INC{'Apache/DBI.pm'} || $Apache::DBI::VERSION)        ? 1 : 0;
+  use constant APACHE_DBI_MP2 => (APACHE_DBI && MOD_PERL_2) ? 1 : 0;
+  use constant APACHE_DBI_MP1 => (APACHE_DBI && MOD_PERL_1) ? 1 : 0;
+}
+
+sub db_cache_entries
+{
+  my($self) = shift;
+  return wantarray ? values %{$self->{'cache'} || {}} : 
+                     [ values %{$self->{'cache'} || {}} ];
 }
 
 sub get_db
@@ -48,6 +111,28 @@ sub set_db
 {
   my($self, $db) = @_;
 
+  # Don't cache anythign during apache startup if use_cache_during_apache_startup
+  # is false.  Weird conditional structure is meant to encourage code elimination
+  # thanks to the lone constants in the if/elsif conditions.
+  if(MOD_PERL_1)
+  {
+    if($Apache::Server::Starting && !$self->use_cache_during_apache_startup)
+    {
+      $Debug && warn "Refusing to cache $db during apache server start-up ",
+                     "because use_cache_during_apache_startup is false";
+      return $db;
+    }
+  }
+  elsif(MOD_PERL_2)
+  {
+    if(Apache2::ServerUtil::restart_count() == 1 && !$self->use_cache_during_apache_startup)
+    {
+      $Debug && warn "Refusing to cache $db during apache server start-up ",
+                     "because use_cache_during_apache_startup is false";
+      return $db;
+    }
+  }
+
   my $key = 
     $self->build_cache_key(domain => $db->domain, 
                            type   => $db->type,
@@ -62,15 +147,7 @@ sub set_db
 
 sub clear { shift->{'cache'} = {} }
 
-QUIET:
-{
-  no warnings 'uninitialized';
-  use constant APACHE_DBI     => ($INC{'Apache/DBI.pm'} || $Apache::DBI::VERSION)    ? 1 : 0;
-  use constant APACHE_DBI_MP2 => (APACHE_DBI && $ENV{'MOD_PERL_API_VERSION'} == 2)   ? 1 : 0;
-  use constant APACHE_DBI_MP1 => (APACHE_DBI && $ENV{'MOD_PERL'} && !APACHE_DBI_MP2) ? 1 : 0;
-}
-
-if(APACHE_DBI_MP2)
+if(MOD_PERL_2)
 {
   require Apache2::ServerUtil;
 }
@@ -79,7 +156,7 @@ sub prepare_db
 {
   my($self, $db, $entry) = @_;
 
-  if(APACHE_DBI_MP1)
+  if(MOD_PERL_1)
   {
     if($Apache::Server::Starting)
     {
@@ -89,10 +166,17 @@ sub prepare_db
     elsif(!$entry->is_prepared)
     {
       if($entry->created_during_apache_startup)
-      {
-        $Debug && $db->has_dbh && warn "$$ Wiping dbh ", $db->dbh, 
-          " created during apache startup from $db\n";
-        $db->dbh(undef);
+      {  
+        if($db->has_dbh)
+        {
+          $Debug && warn "$$ Disconnecting and undef-ing dbh ", $db->dbh, 
+                         " created during apache startup from $db\n";
+          eval { $db->dbh->disconnect }; # will probably fail!
+          warn "$$ Could not disconnect dbh created during apache startup: ", 
+               $db->dbh, " - $@"  if($@);
+          $db->dbh(undef);
+        }
+
         $entry->created_during_apache_startup(0);
         return;
       }
@@ -109,7 +193,7 @@ sub prepare_db
   }
 
   # Not a chained elsif to help Perl eliminate the unused code (maybe unnecessary?)
-  if(APACHE_DBI_MP2)
+  if(MOD_PERL_2)
   {
     if(Apache2::ServerUtil::restart_count() == 1) # server starting
     {
@@ -120,9 +204,16 @@ sub prepare_db
     {
       if($entry->created_during_apache_startup)
       {
-        $Debug && $db->has_dbh && warn "$$ Wiping dbh ", $db->dbh, 
-          " created during apache startup from $db\n";
-        $db->dbh(undef);
+        if($db->has_dbh)
+        {
+          $Debug && warn "$$ Disconnecting and undef-ing dbh ", $db->dbh, 
+                         " created during apache startup from $db\n";
+          eval { $db->dbh->disconnect }; # will probably fail!
+          warn "$$ Could not disconnect dbh created during apache startup: ", 
+               $db->dbh, " - $@"  if($@);
+          $db->dbh(undef);
+        }
+
         $entry->created_during_apache_startup(0);
         return;
       }
@@ -145,7 +236,7 @@ __END__
 
 =head1 NAME
 
-Rose::DB::Cache - A cache for Rose::DB objects.
+Rose::DB::Cache - A mod_perl-aware cache for Rose::DB objects.
 
 =head1 SYNOPSIS
 
@@ -176,12 +267,13 @@ Rose::DB::Cache - A cache for Rose::DB objects.
   sub prepare_db      { ... }
   sub build_cache_key { ... }
   sub clear           { ... }
+  ...
 
 =head1 DESCRIPTION
 
-L<Rose::DB::Cache> provides both an API and a default implementation of a caching system for L<Rose::DB> objects.  Each L<Rose::DB>-derived class L<references|Rose::DB/db_cache> a L<Rose::DB::Cache>-derived object to which it delegates cache-related activites.  See the L<new_or_cached|Rose::DB/new_or_cached> method for an example.
+L<Rose::DB::Cache> provides both an API and a default implementation of a caching system for L<Rose::DB> objects.  Each L<Rose::DB>-derived class L<references|Rose::DB/db_cache> a L<Rose::DB::Cache>-derived object to which it delegates cache-related activities.  See the L<new_or_cached|Rose::DB/new_or_cached> method for an example.
 
-The default implementation caches and returns L<Rose::DB> objects using the combination of their L<type|Rose::DB/type> and L<domain|Rose::DB/domain> as the cache key.  There is no cache expiration or other cache cleaning.  The only sophistication in the default implementation is that it is L<Apache::DBI>-aware: it will do the right thing during apache server start-up and will ensure that L<Apache::DBI>'s "ping" and rollback features work as expected, keeping the L<DBI> database handles L<contained|Rose::DB/dbh> within each L<Rose::DB> object connected and alive.  Bot mod_perl 1.x and 2.x are supported.
+The default implementation caches and returns L<Rose::DB> objects using the combination of their L<type|Rose::DB/type> and L<domain|Rose::DB/domain> as the cache key.  There is no cache expiration or other cache cleaning.  The only sophistication in the default implementation is that it is L<mod_perl>- and L<Apache::DBI>-aware: it will do the right thing during apache server start-up and will ensure that L<Apache::DBI>'s "ping" and rollback features work as expected, keeping the L<DBI> database handles L<contained|Rose::DB/dbh> within each L<Rose::DB> object connected and alive.  Both mod_perl 1.x and 2.x are supported.
 
 Subclasses can override any and all methods described below in order to implement their own caching strategy.
 
@@ -192,6 +284,10 @@ Subclasses can override any and all methods described below in order to implemen
 =item B<build_cache_key PARAMS>
 
 Given the name/value pairs PARAMS, return a string representing the corresponding cache key.  Calls to this method from within L<Rose::DB::Cache> will include at least C<type> and C<domain> parameters, but you may pass any parameters if you override all methods that call this method in your subclass.
+
+=item B<default_use_cache_during_apache_startup [BOOL]>
+
+Get or set a boolean value that determines the default value of the L<use_cache_during_apache_startup|/use_cache_during_apache_startup> object attribute.  The default value is false.  See the L<use_cache_during_apache_startup|/use_cache_during_apache_startup> documentation for more information.
 
 =item B<entry_class [CLASS]>
 
@@ -216,7 +312,7 @@ name/value pairs.  Any object method is a valid parameter name.
 
 =item B<clear>
 
-Clears the cache entirely.
+Clear the cache entirely.
 
 =item B<get_db [PARAMS]>
 
@@ -226,23 +322,27 @@ If a cached object is found, the L<prepare_db|/prepare_db> method is called, pas
 
 If no such object exists in the cache, undef is returned.
 
+=item B<prepare_for_apache_fork>
+
+Prepares the cache for the initial fork of the apache parent process by L<disconnect()ing|DBI/disconnect> all database handles and deleting all cache entries that were L<created during apache startup|Rose::DB::Cache::Entry/created_during_apache_startup>.  This call is only necessary if running under L<mod_perl> I<and> L<use_cache_during_apache_startup|/use_cache_during_apache_startup> set set to true.  See the L<use_cache_during_apache_startup|/use_cache_during_apache_startup> documentation for more information.
+
 =item B<prepare_db [DB, ENTRY]>
 
 Prepare the cached L<Rose::DB>-derived object DB for usage.  The cached's db object's L<Rose::DB::Cache::Entry> object, ENTRY, is also passed.
 
-When I<NOT> running under L<Apache::DBI>, this method does nothing.
+When I<NOT> running under L<mod_perl>, this method does nothing.
 
-When running under L<Apache::DBI>, using either mod_perl 1.x or 2.x, this method will do the following:
+When running under L<mod_perl> (version 1.x or 2.x), this method will do the following:
 
 =over 4
 
-=item * Any L<DBI> database handle created inside a L<Rose::DB> object during apache server startup will be discarded and replaced the first time it is used after server startup has completed.
+=item * Any L<DBI> database handle created inside a L<Rose::DB> object during apache server startup will be L<marked|Rose::DB::Cache::Entry/created_during_apache_startup> as such.  Any attempt to use such an object after the apache startup process has completed (i.e., in a child apache process) will cause it to be discarded and replaced.  Note that you usually don't want it to come to this.  It's better to cleanly disconnect all such database handles before the first apache child forks off.  See the documentation for the L<use_cache_during_apache_startup|/use_cache_during_apache_startup> and L<prepare_for_apache_fork|/prepare_for_apache_fork> methods for more information.
 
 =item * All L<DBI> database handles contained in cached L<Rose::DB> objects will be cleared at the end of each request using a C<PerlCleanupHandler>.  This will cause L<DBI-E<gt>connect|DBI/connect> to be called the next time a L<dbh|Rose::DB/dbh> is requested from a cached L<Rose::DB> object, which in turn will trigger L<Apache::DBI>'s ping mechanism to ensure that the database handle is fresh.
 
 =back
 
-Putting all the pieces together, the following implementation of the L<init_db|Rose::DB::Object/init_db> method in your L<Rose::DB::Object>-derived common base class will ensure that database connections are shared and fresh under L<mod_perl> and L<Apache::DBI>, but unshared elsewhere:
+Putting all the pieces together, the following implementation of the L<init_db|Rose::DB::Object/init_db> method in your L<Rose::DB::Object>-derived common base class will ensure that database connections are shared and fresh under L<mod_perl> and (optionally) L<Apache::DBI>, but I<unshared> elsewhere:
 
   package My::DB::Object;
 
@@ -265,7 +365,23 @@ Putting all the pieces together, the following implementation of the L<init_db|R
 
 =item B<set_db DB>
 
-Add the L<Rose::DB>-derived object DB to the cache.  The DB's L<domain|Rose::DB/domain>, L<type|Rose::DB/type>, and the db object itself (under the param name C<db>) are all are passed to the L<build_cache_key|/build_cache_key> method and the DB object is stored under the key returned.
+Add the L<Rose::DB>-derived object DB to the cache.  The DB's L<domain|Rose::DB/domain>, L<type|Rose::DB/type>, and the db object itself (under the parameter name C<db>) are all are passed to the L<build_cache_key|/build_cache_key> method and the DB object is stored under the key returned.
+
+If running under L<mod_perl> I<and> the apache server is starting up I<and> L<use_cache_during_apache_startup|/use_cache_during_apache_startup> is set to true, then the DB object is I<not> added to the cache, but merely returned.
+
+=item B<use_cache_during_apache_startup [BOOL]>
+
+Get or set a boolean value that determines whether or not to cache database objects during the apache server startup process.  The default value is determined by the L<default_use_cache_during_apache_startup|/default_use_cache_during_apache_startup> class method.
+
+L<DBI> database handles created in the parent apache process cannot be used in child apache processes.  Furthermore, in the case of at least L<one|DBD::Informix> one L<DBI driver class|DBI::DBD>, you must I<also> ensure that any database handles created in the apache parent process during server startup are properly L<disconnect()ed|DBI/disconnect> I<before> you fork off the first apache child.  Failure to do so may cause segmentation faults(!) in child apache processes.
+
+The upshot is that if L<use_cache_during_apache_startup|/use_cache_during_apache_startup> is set to true, you B<MUST> be sure to call L<prepare_for_apache_fork|/prepare_for_apache_fork> at the I<very end> of the apache startup process (i.e., once all other Perl modules have been loaded and all other Perl code has run).  This is usually done by placing a call at the very bottom of the traditional C<startup.pl> file.  Assuming C<My::DB> is your L<Rose::DB|Rose::DB>-derived class:
+
+    My::DB->db_cache->prepare_for_apache_fork();
+
+A L<convenience method|Rose::DB/prepare_cache_for_apache_fork> exists in L<Rose::DB> as well, which simply translates into call shown above:
+
+    My::DB->prepare_cache_for_apache_fork();
 
 =back
 

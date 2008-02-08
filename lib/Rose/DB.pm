@@ -20,7 +20,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.738';
+our $VERSION = '0.739';
 
 our $Debug = 0;
 
@@ -299,6 +299,16 @@ sub db_cache
   die "Could not load db cache class '$cache_class' - $@"  if($@);
 
   return $class->_db_cache($cache_class->new);
+}
+
+sub use_cache_during_apache_startup
+{
+  shift->db_cache->use_cache_during_apache_startup(@_);
+}
+
+sub prepare_cache_for_apache_fork
+{
+  shift->db_cache->prepare_for_apache_fork(@_);
 }
 
 sub new_or_cached
@@ -2365,11 +2375,11 @@ Multiplexing, fail-over, and other more complex relationships between logical da
 
 The driver type of the data source determines the functionality of all methods that do vendor-specific things (e.g., L<column value parsing and formatting|"Vendor-Specific Column Value Parsing and Formatting">).
 
-L<Rose::DB> identifies data sources using a two-level namespace made of a "domain" and a "type".  Both are arbitrary strings.  If left unspecified, the default domain and default type (accessible via L<Rose::DB>'s L</default_domain> and L</default_type> class methods) are assumed.
+L<Rose::DB> identifies data sources using a two-level namespace made of a "domain" and a "type".  Both are arbitrary strings.  If left unspecified, the default domain and default type (accessible via L<Rose::DB>'s L<default_domain|/default_domain> and L<default_type|/default_type> class methods) are assumed.
 
 There are many ways to use the two-level namespace, but the most common is to use the domain to represent the current environment (e.g., "development", "staging", "production") and then use the type to identify the logical data source within that environment (e.g., "report", "main", "archive")
 
-A typical deployment scenario will set the default domain using the L</default_domain> class method as part of the configure/install process.  Within application code, L<Rose::DB> objects can be constructed by specifying type alone:
+A typical deployment scenario will set the default domain using the L<default_domain|/default_domain> class method as part of the configure/install process.  Within application code, L<Rose::DB> objects can be constructed by specifying type alone:
 
     $main_db    = Rose::DB->new(type => 'main');
     $archive_db = Rose::DB->new(type => 'archive');
@@ -2411,7 +2421,7 @@ L<Rose::DB> does B<NOT> attempt to present a unified column type system, however
 
 =head2 High-Level Transaction Support
 
-Transactions may be started, committed, and rolled back in a variety of ways using the L<DBI> database handle directly.  L<Rose::DB> provides wrappers to do the same things, but with different error handling and return values.  There's also a method (L</do_transaction>) that will execute arbitrary code within a single transaction, automatically handling rollback on failure and commit on success.
+Transactions may be started, committed, and rolled back in a variety of ways using the L<DBI> database handle directly.  L<Rose::DB> provides wrappers to do the same things, but with different error handling and return values.  There's also a method (L<do_transaction|/do_transaction>) that will execute arbitrary code within a single transaction, automatically handling rollback on failure and commit on success.
 
 =head1 SUBCLASSING
 
@@ -2671,6 +2681,16 @@ PARAMS are name/value pairs.  Any L<Rose::DB> object method that sets a L<data s
 
 PARAMS should include values for both the C<type> and C<domain> parameters since these two attributes are used to identify the data source.  If they are omitted, they default to L<default_domain|/default_domain> and L<default_type|/default_type>, respectively.  If default values do not exist, a fatal error will occur.  If there is no data source defined for the specified C<type> and C<domain>, a fatal error will occur.
 
+=item B<prepare_cache_for_apache_fork>
+
+This is a convenience method that is equivalent to the following call:
+
+    Rose::DB->db_cache->prepare_for_apache_fork()
+
+Any arguments passed to this method are passed on to the call to the L<db_cache|/db_cache>'s L<prepare_for_apache_fork|Rose::DB::Cache/prepare_for_apache_fork> method.
+
+Please read the L<Rose::DB::Cache> documentation, particularly the documentation for the L<use_cache_during_apache_startup|Rose::DB::Cache/use_cache_during_apache_startup> method for more information.
+
 =item B<register_db PARAMS>
 
 Registers a new data source with the attributes specified in PARAMS, where
@@ -2794,6 +2814,16 @@ Unregisters an entire domain.  Returns true if the domain was unregistered succe
     Rose::DB->unregister_domain('test');
 
 Unregistering a domain removes all knowledge of all of the data sources that existed under it.  This may be harmful to any existing L<Rose::DB> objects that are associated with any of those data sources.
+
+=item B<use_cache_during_apache_startup [BOOL]>
+
+This is a convenience method that is equivalent to the following call:
+
+    Rose::DB->db_cache->use_cache_during_apache_startup(...)
+
+The boolean argument passed to this method is passed on to the call to the L<db_cache|/db_cache>'s L<use_cache_during_apache_startup|Rose::DB::Cache/use_cache_during_apache_startup> method.
+
+Please read the L<Rose::DB::Cache>'s L<use_cache_during_apache_startup|Rose::DB::Cache/use_cache_during_apache_startup> documentation for more information.
 
 =item B<use_private_registry>
 
