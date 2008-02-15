@@ -20,7 +20,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.739';
+our $VERSION = '0.740';
 
 our $Debug = 0;
 
@@ -1998,6 +1998,13 @@ sub format_table_with_alias
 {
   #my($self, $table, $alias, $hints) = @_;
   return "$_[1] $_[2]";
+}
+
+sub format_select_start_sql
+{
+  my($self, $hints) = @_;
+  return 'SELECT'  unless($hints);
+  return 'SELECT ' . ($hints->{'comment'} ? "/* $hints->{'comment'} */" : '');
 }
 
 sub supports_on_duplicate_key_update { 0 }
