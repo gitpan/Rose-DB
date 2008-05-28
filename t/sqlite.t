@@ -7,7 +7,11 @@ use Rose::DateTime::Util qw(parse_date);
 BEGIN
 {
   require Test::More;
-  eval { require DBD::SQLite };
+  eval
+  {
+    local $^W = 0;
+    require DBD::SQLite;
+  };
 
   if($@ || $DBD::SQLite::VERSION < 1.08 || $ENV{'RDBO_NO_SQLITE'})
   {
@@ -172,9 +176,9 @@ Rose::DB->register_db(
 if((! -e '/tmp/rdbo_does_not_exist.db') || unlink('/tmp/rdbo_does_not_exist.db'))
 {
   $db = Rose::DB->new('nonesuch');
-  
+
   eval { $db->connect };
-  
+
   ok($@ =~ /^Refus/, 'nonesuch database');
 }
 else
