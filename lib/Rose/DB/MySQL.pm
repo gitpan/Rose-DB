@@ -11,7 +11,7 @@ eval { require DBD::mysql }; # Ignore errors
 
 use Rose::DB;
 
-our $VERSION = '0.743';
+our $VERSION = '0.745';
 
 our $Debug = 0;
 
@@ -236,6 +236,7 @@ sub parse_bitfield
     return $val;
   }
 
+  no warnings 'uninitialized';
   if($from_db && $val =~ /^\d+$/)
   {
     return Bit::Vector->new_Dec($size || (length($val) * 4), $val);
@@ -277,6 +278,8 @@ sub format_bitfield
 
   return hex($vec->to_Hex);
 }
+
+sub validate_bitfield_keyword { defined $_[1] ? 1 : 0 }
 
 sub should_inline_bitfield_values
 {
