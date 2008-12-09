@@ -1,3 +1,9 @@
+0.748 (12.09.2008) - John Siracusa <siracusa@gmail.com>
+
+    * Fixed mod_perl 2.x support in Rose::DB::Cache. (Reported by 
+      Kostas Chatzikokolakis)
+    * Resolved ambiguous driver_class link in POD.
+
 0.747 (10.22.2008) - Justin Ellison <justin@techadvise.com>
 
     * Changed to require YAML instead of YAML::Syck, though YAML::Syck

@@ -20,7 +20,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.747';
+our $VERSION = '0.748';
 
 our $Debug = 0;
 
@@ -2507,7 +2507,7 @@ encountered that has ever had this attribute set.
 
 (These attributes use the L<inheritable_scalar|Rose::Class::MakeMethods::Generic/inheritable_scalar> method type as defined in L<Rose::Class::MakeMethods::Generic>.)
 
-=item B<driver_class>, B<default_connect_options>
+=item B<driver_class, default_connect_options>
 
 These hashes of attributes are inherited by subclasses using a one-time, shallow copy from a superclass.  Any subclass that accesses or manipulates the hash in any way will immediately get its own private copy of the hash I<as it exists in the superclass at the time of the access or manipulation>.  
 
@@ -3441,7 +3441,7 @@ Peter Karman, Lucian Dragus, Ron Savage
 
 John C. Siracusa (siracusa@gmail.com)
 
-=head1 COPYRIGHT
+=head1 LICENSE
 
 Copyright (c) 2008 by John C. Siracusa.  All rights reserved.  This program is
 free software; you can redistribute it and/or modify it under the same terms
