@@ -1,3 +1,12 @@
+0.749 (12.12.2008) - John Siracusa <siracusa@gmail.com>
+
+    * Added support for many more registry entry attributes.
+    * More mod_perl 2.x fixes for Rose::DB::Cache. (Reported by 
+      Kostas Chatzikokolakis)
+    * Added apache_has_started attribute to Rose::DB::Cache to support
+      mod_perl 2.x users who do not have the ability to run code on
+      server startup.  (Suggested by Kostas Chatzikokolakis)
+
 0.748 (12.09.2008) - John Siracusa <siracusa@gmail.com>
 
     * Fixed mod_perl 2.x support in Rose::DB::Cache. (Reported by 

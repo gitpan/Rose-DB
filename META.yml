@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Rose-DB
-version:            0.748
+version:            0.749
 abstract:           ~
 author:  []
 license:            perl
@@ -16,7 +16,7 @@ requires:
     DBI:                  0
     perl:                 5.006000
     Rose::DateTime::Util:  0.532
-    Rose::Object:         0.82
+    Rose::Object:         0.854
     Scalar::Util:         0
     SQL::ReservedWords:   0
     Test::More:           0
