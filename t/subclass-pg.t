@@ -15,7 +15,7 @@ BEGIN
   }
   else
   {
-    Test::More->import(tests => 232);
+    Test::More->import(tests => 234);
   }
 }
 
@@ -34,7 +34,7 @@ ok(ref $db && $db->isa('Rose::DB'), 'new()');
 
 SKIP:
 {
-  skip("Could not connect to db - $@", 9)  unless(have_db('pg'));
+  skip("Could not connect to db - $@", 11)  unless(have_db('pg'));
 
   my $dbh = $db->dbh;
 
@@ -50,6 +50,12 @@ SKIP:
   { 
     is($db2->$field(), $db->$field(), "$field()");
   }
+
+  ok(!$db->pg_enable_utf8, 'pg_enable_utf8 false');
+  
+  $db->pg_enable_utf8(1);
+  
+  ok($db->pg_enable_utf8 && $db->dbh->{'pg_enable_utf8'}, 'pg_enable_utf8 true');
 
   $db->disconnect;
   $db2->disconnect;

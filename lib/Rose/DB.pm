@@ -20,7 +20,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.749';
+our $VERSION = '0.750';
 
 our $Debug = 0;
 
@@ -3454,6 +3454,6 @@ John C. Siracusa (siracusa@gmail.com)
 
 =head1 LICENSE
 
-Copyright (c) 2008 by John C. Siracusa.  All rights reserved.  This program is
+Copyright (c) 2009 by John C. Siracusa.  All rights reserved.  This program is
 free software; you can redistribute it and/or modify it under the same terms
 as Perl itself.
