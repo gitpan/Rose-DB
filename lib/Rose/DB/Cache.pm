@@ -7,7 +7,7 @@ use base 'Rose::Object';
 use Scalar::Util qw(refaddr);
 use Rose::DB::Cache::Entry;
 
-our $VERSION = '0.749';
+our $VERSION = '0.751';
 
 our $Debug = 0;
 
@@ -188,16 +188,20 @@ if(MOD_PERL_2)
     $Debug && warn "$$ is already MP2 child (not registering child init handler)\n";
     $MP2_Is_Child = 1;
   }
-  else
+  elsif(!$ENV{'ROSE_DB_NO_CHILD_INIT_HANDLER'})
   {
-    Apache2::ServerUtil->server->push_handlers(PerlChildInitHandler => sub
-    {
-      $Debug && warn "$$ is MP2 child\n";
-      $MP2_Is_Child = 1;
-  
-      return Apache2::Const::OK();
-    });
+    Apache2::ServerUtil->server->push_handlers(
+      PerlChildInitHandler => \&__mod_perl_2_rose_db_child_init_handler);
   }
+}
+
+# http://mail-archives.apache.org/mod_mbox/perl-dev/200504.mbox/%3C4256B5FF.5060401@stason.org%3E
+# To work around this issue, we'll use a named subroutine.
+sub __mod_perl_2_rose_db_child_init_handler
+{
+  $Debug && warn "$$ is MP2 child\n";
+  $MP2_Is_Child = 1;
+  return Apache2::Const::OK();
 }
 
 sub apache_has_started

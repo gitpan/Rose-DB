@@ -1,3 +1,9 @@
+0.751 (04.19.2009) - John Siracusa <siracusa@gmail.com>
+
+    * Worked around a mod_perl 2 issue related to PerlOptions +Parent
+      http://bit.ly/160jLN (Reported by Anton)
+    * Updated test suite to consider DBD::SQLite 1.19+ non-broken.
+
 0.750 (02.26.2009) - Peter Karman <perl@peknet.com>
 
     * Added pg_enable_utf8 attribute.
