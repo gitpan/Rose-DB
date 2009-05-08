@@ -1,3 +1,11 @@
+0.752 (05.08.2009) - John Siracusa <siracusa@gmail.com>
+
+    * Added workaround for the lack of getpwuid() on Windows.
+    * SQLite column and table names are not properly unquoted when
+      necessary.  (RT 45836)
+    * Indicate that MySQL 5.0.45 and later supports selecting from
+      a subselect.
+
 0.751 (04.19.2009) - John Siracusa <siracusa@gmail.com>
 
     * Worked around a mod_perl 2 issue related to PerlOptions +Parent
