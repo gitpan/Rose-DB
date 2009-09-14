@@ -20,7 +20,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.753';
+our $VERSION = '0.754';
 
 our $Debug = 0;
 
@@ -1130,6 +1130,8 @@ sub do_transaction
 
   my $dbh = $self->dbh or return undef;  
 
+  local $@;
+
   eval
   {
     local $dbh->{'RaiseError'} = 1;
@@ -1140,7 +1142,7 @@ sub do_transaction
 
   if($@)
   {
-    my $error = "do_transaction() failed - $@";
+    my $error = ref $@ ? $@ : "do_transaction() failed - $@";
 
     if($self->rollback)
     {
@@ -2172,12 +2174,12 @@ sub auto_load_fixups
 
     # The getpwuid() function is often(?) unimplemented in perl on Windows.
     eval { $username = lc getpwuid($<) };
-    
+
     unless($@)
     {
       $rosedb_devinit = "Rose::DB::Devel::Init::$username";
       eval qq(require $rosedb_devinit);
-  
+
       if($@)
       {
         eval { do $rosedb_devinit };
@@ -2215,7 +2217,7 @@ sub load_yaml_fixup_file
   unless($YAML_Class)
   {
     eval { require YAML::Syck };
-    
+
     if($@)
     {
       require YAML;
@@ -2427,8 +2429,7 @@ L<Rose::DB> currently supports the following L<DBI> database drivers:
     DBD::mysql    (MySQL)
     DBD::SQLite   (SQLite)
     DBD::Informix (Informix)
-
-Oracle (L<DBD::Oracle>) is mostly supported, but some features may not yet work correctly.
+    DBD::Oracle   (Oracle)
 
 L<Rose::DB> will attempt to service an unsupported database using a L<generic|Rose::DB::Generic> implementation that may or may not work.  Support for more drivers may be added in the future.  Patches are welcome.
 
@@ -3053,6 +3054,8 @@ Execute arbitrary code within a single transaction, rolling back if any of the c
       $dbh->do("UPDATE acct SET bal = bal + $amt WHERE id = $id2");
     },
     100, 5, 9) or warn "Transfer failed: ", $db->error;
+
+If the CODE block threw an exception or the transaction could not be started and committed successfully, then undef is returned and the exception thrown is available in the L<error|/error> attribute.  Otherwise, a true value is returned.
 
 =item B<error [MSG]>
 

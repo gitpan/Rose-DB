@@ -1,3 +1,8 @@
+0.754 (09.14.2009) - John Siracusa <siracusa@gmail.com>
+
+    * Removed outdated warning about Oracle support.
+	* Clarified the return value and error handling for do_transaction().
+
 0.753 (07.09.2009) - John Siracusa <siracusa@gmail.com>
 
     * Detect enum-like columns in PostgreSQL.  (RT 46214)

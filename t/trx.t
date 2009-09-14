@@ -2,7 +2,7 @@
 
 use strict;
 
-use Test::More tests => 72;
+use Test::More tests => 74;
 
 BEGIN 
 {
@@ -15,12 +15,12 @@ our($HAVE_PG, $HAVE_ORACLE, $HAVE_MYSQL, $HAVE_INFORMIX);
 Rose::DB->default_domain('test');
 
 #
-# Postgres
+# PostgreSQL
 #
 
 SKIP: foreach my $db_type ('pg')
 {
-  skip("Postgres tests", 21)  unless($HAVE_PG);
+  skip("PostgreSQL tests", 23)  unless($HAVE_PG);
 
   Rose::DB->default_type($db_type);
 
@@ -72,7 +72,7 @@ SKIP: foreach my $db_type ('pg')
     $version =~ s/^(\d+)\.(\d+)\.(\d+)$/sprintf("$1.%03d%03d", $2, $3)/e; # lame conversion of three-part version number
     # This broke in DBD::Pg 1.47, and 1.44-6 are broken in other ways
     # so only run these tests with 1.43 or earlier, or 1.48 or later.
-    skip('DBD::Pg 1.43-7 bug?', 5)  if($version > 1.43 && $version < 1.48);
+    skip('DBD::Pg 1.43-7 bug?', 7)  if($version > 1.43 && $version < 1.48);
 
     ok($db->begin_work, "begin_work() 3 - $db_type");
 
@@ -99,6 +99,13 @@ SKIP: foreach my $db_type ('pg')
     my $count = $sth->fetchrow_array;
 
     is($count, 4, "do_transaction() 3 - $db_type");
+
+    is($db->do_transaction(sub
+    {
+      die bless { msg => 'Test' }, 'My::Exception';
+    }), undef, "do_transaction() exception 1 - $db_type");
+
+    is(ref $db->error, 'My::Exception', "do_transaction() exception 1 - $db_type");
   }
 }
 
@@ -293,7 +300,7 @@ SKIP: foreach my $db_type ('informix')
 BEGIN
 {
   #
-  # Postgres
+  # PostgreSQL
   #
 
   my $dbh;
@@ -449,7 +456,7 @@ END
 
   if($HAVE_PG)
   {
-    # Postgres
+    # PostgreSQL
     my $dbh = Rose::DB->new('pg_admin')->retain_dbh()
       or die Rose::DB->error;
 
