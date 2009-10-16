@@ -8,7 +8,7 @@ use Rose::DB;
 
 our $Debug = 0;
 
-our $VERSION  = '0.746'; 
+our $VERSION  = '0.755'; 
 
 use Rose::Class::MakeMethods::Generic
 (
@@ -97,9 +97,12 @@ sub build_dsn
 
   my $database = $args{'db'} || $args{'database'};
 
-  if(my $host = $args{'host'})
+  if($args{'host'} || $args{'port'})
   {
-    return "dbi:Oracle:sid=$database;host=$host";
+    $args{'sid'} = $database;
+
+    return 'dbi:Oracle:' . 
+      join(';', map { "$_=$args{$_}" } grep { $args{$_} } qw(sid host port));
   }
 
   return "dbi:Oracle:$database";
@@ -128,29 +131,37 @@ sub dbi_driver { 'Oracle' }
 sub list_tables
 {
   my($self, %args) = @_;
-  my($types)       = $args{'include_views'} ? "'TABLE','VIEW'" : 'TABLE';
 
-  my @tables;
+  my $types = $args{'include_views'} ? "'TABLE','VIEW'" : 'TABLE';
 
-  eval
+  my($error, @tables);
+
+  TRY:
   {
-    my($dbh) = $self->dbh or die $self->error;
+    local $@;
 
-    local $dbh->{'RaiseError'} = 1;
-    local $dbh->{'FetchHashKeyName'} = 'NAME';
-
-    my $sth  = $dbh->table_info($self->catalog, uc $self->schema, '%', $types);
-    my $info = $sth->fetchall_arrayref({}); # The {} are mandatory.
-
-    for my $table (@$info)
+    eval
     {
-      push @tables, $$table{'TABLE_NAME'} if ($$table{'TABLE_NAME'} !~ /^BIN\$.+\$.+/);
-    }
-  };
+      my($dbh) = $self->dbh or die $self->error;
 
-  if($@)
+      local $dbh->{'RaiseError'} = 1;
+      local $dbh->{'FetchHashKeyName'} = 'NAME';
+
+      my $sth  = $dbh->table_info($self->catalog, uc $self->schema, '%', $types);
+      my $info = $sth->fetchall_arrayref({}); # The {} are mandatory.
+
+      for my $table (@$info)
+      {
+        push @tables, $$table{'TABLE_NAME'} if ($$table{'TABLE_NAME'} !~ /^BIN\$.+\$.+/);
+      }
+    };
+
+    $error = $@;
+  }
+
+  if($error)
   {
-    Carp::croak 'Could not list tables from ', $self->dsn, " - $@";
+    Carp::croak 'Could not list tables from ', $self->dsn, " - $error";
   }
 
   return wantarray ? @tables : \@tables;
@@ -159,25 +170,32 @@ sub list_tables
 sub next_value_in_sequence
 {
   my($self, $seq) = @_;
-  my($dbh)        = $self->dbh or return undef;
 
-  my $id;
+  my $dbh = $self->dbh or return undef;
 
-  eval
+  my($error, $id);
+
+  TRY:
   {
-    my($sth) = $dbh->prepare("SELECT $seq.nextval FROM dual");
+    local $@;
 
-    $sth->execute;
+    eval
+    {
+      my($sth) = $dbh->prepare("SELECT $seq.nextval FROM dual");
 
-    $id = ${$sth->fetch}[0];
+      $sth->execute;
 
-    $sth->finish;
-  };
+      $id = ${$sth->fetch}[0];
 
-  if ($@)
+      $sth->finish;
+    };
+
+    $error = $@;
+  }
+
+  if($error)
   {
-    $self->error("Could not get the next value in the sequence '$seq' - $@");
-
+    $self->error("Could not get the next value in the sequence '$seq' - $error");
     return undef;
   }
 
@@ -210,21 +228,28 @@ sub primary_key_column_names
 
   my $table_unquoted = $self->unquote_table_name($table);
 
-  my $columns;
+  my($error, $columns);
 
-  eval 
+  TRY:
   {
-    $columns = 
-      $self->_get_primary_key_column_names($catalog, $schema, $table_unquoted);
-  };
+    local $@;
 
-  if($@ || !$columns)
+    eval 
+    {
+      $columns = 
+        $self->_get_primary_key_column_names($catalog, $schema, $table_unquoted);
+    };
+
+    $error = $@;
+  }
+
+  if($error || !$columns)
   {
     no warnings 'uninitialized'; # undef strings okay
-    $@ = 'no primary key columns found'  unless(defined $@);
+    $error = 'no primary key columns found'  unless(defined $error);
     Carp::croak "Could not get primary key columns for catalog '" . 
                 $catalog . "' schema '" . $schema . "' table '" . 
-                $table_unquoted . "' - " . $@;
+                $table_unquoted . "' - " . $error;
   }
 
   return wantarray ? @$columns : $columns;

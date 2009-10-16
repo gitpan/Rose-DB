@@ -1,7 +1,13 @@
+0.755 (10.16.2009) - John Siracusa <siracusa@gmail.com>
+
+    * Fixed a bug in Rose::DB::Oracle that caused the port to be omitted
+      from the DSN.  (Reported by llama)
+    * Updated eval blocks to avoid stomping on $@ from an outer scope.
+
 0.754 (09.14.2009) - John Siracusa <siracusa@gmail.com>
 
     * Removed outdated warning about Oracle support.
-	* Clarified the return value and error handling for do_transaction().
+    * Clarified the return value and error handling for do_transaction().
 
 0.753 (07.09.2009) - John Siracusa <siracusa@gmail.com>
 
