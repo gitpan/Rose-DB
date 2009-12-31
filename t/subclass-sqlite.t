@@ -2,6 +2,8 @@
 
 use strict;
 
+BEGIN { $ENV{'ROSE_DB_KEYWORD_FUNCTION_CALLS'} = 1 }
+
 use Rose::DateTime::Util qw(parse_date);
 
 BEGIN
@@ -11,7 +13,7 @@ BEGIN
 
   if(have_db('sqlite_admin'))
   {
-    Test::More->import(tests => 44);
+    Test::More->import(tests => 46);
   }
   else
   {
@@ -24,7 +26,13 @@ use_ok('Rose::DB');
 My::DB2->default_domain('test');
 My::DB2->default_type('sqlite_admin');
 
+is(My::DB2->default_keyword_function_calls, 1, 'default_keyword_function_calls 2');
+
 my $db = My::DB2->new();
+
+is($db->keyword_function_calls, 1, 'keyword_function_calls 1');
+My::DB2->default_keyword_function_calls(0);
+$db->keyword_function_calls(0);
 
 ok(ref $db && $db->isa('Rose::DB'), 'new()');
 
@@ -68,19 +76,27 @@ $rand = 'default'  unless(defined $rand); # got under here once!
 
 ok(!$db->validate_timestamp_keyword($rand), "validate_timestamp_keyword ($rand)");
 
+$db->keyword_function_calls(1);
 is($db->format_timestamp('Foo(Bar)'), 'Foo(Bar)', 'format_timestamp (Foo(Bar))');
+$db->keyword_function_calls(0);
 
 ok(!$db->validate_datetime_keyword($rand), "validate_datetime_keyword ($rand)");
 
+$db->keyword_function_calls(1);
 is($db->format_datetime('Foo(Bar)'), 'Foo(Bar)', 'format_datetime (Foo(Bar))');
+$db->keyword_function_calls(0);
 
 ok(!$db->validate_date_keyword($rand), "validate_date_keyword ($rand)");
 
+$db->keyword_function_calls(1);
 is($db->format_date('Foo(Bar)'), 'Foo(Bar)', 'format_date (Foo(Bar))');
+$db->keyword_function_calls(0);
 
 ok(!$db->validate_time_keyword($rand), "validate_time_keyword ($rand)");
 
+$db->keyword_function_calls(1);
 is($db->format_time('Foo(Bar)'), 'Foo(Bar)', 'format_time (Foo(Bar))');
+$db->keyword_function_calls(0);
 
 is($db->format_array([ 'a', 'b' ]), q({"a","b"}), 'format_array() 1');
 is($db->format_array('a', 'b'), q({"a","b"}), 'format_array() 2');
