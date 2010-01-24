@@ -15,7 +15,7 @@ BEGIN
   }
   else
   {
-    Test::More->import(tests => 59);
+    Test::More->import(tests => 68);
   }
 }
 
@@ -62,12 +62,16 @@ foreach my $val (qw(f 0 false False F n N no No))
   is($db->format_boolean($db->parse_boolean($val)), 'f', "format_boolean ($val)");
 }
 
+is($db->auto_quote_column_name('foo_bar_123'), 'foo_bar_123', 'auto_quote_column_name 1');
+is($db->auto_quote_column_name('claim#'), '"CLAIM#"', 'auto_quote_column_name 2');
+is($db->auto_quote_column_name('foo-bar'), '"FOO-BAR"', 'auto_quote_column_name 3');
+
 my $dbh;
 eval { $dbh = $db->dbh };
 
 SKIP:
 {
-  skip("Could not connect to db - $@", 9)  if($@);
+  skip("Could not connect to db - $@", 16)  if($@);
 
   ok($dbh, 'dbh() 1');
 
@@ -81,6 +85,26 @@ SKIP:
   {
     is($db2->$field(), $db->$field(), "$field()");
   }
+
+  SEQUENCE_PREP:
+  {
+    my $dbh = $db->dbh;
+    local $dbh->{'PrintError'} = 0;
+    local $dbh->{'RaiseError'} = 0;
+    $dbh->do('DROP SEQUENCE rose_db_sequence_test');
+  }
+
+  $dbh->do('CREATE SEQUENCE rose_db_sequence_test MINVALUE 5');
+
+  ok($db->sequence_exists('rose_db_sequence_test'), 'sequence_exists 1');
+  ok(!$db->sequence_exists('rose_db_sequence_testx'), 'sequence_exists 2');
+  is($db->current_value_in_sequence('rose_db_sequence_test'), 5, 'current_value_in_sequence 1');
+  is($db->next_value_in_sequence('rose_db_sequence_test'), 6, 'next_value_in_sequence 1');
+  is($db->current_value_in_sequence('rose_db_sequence_test'), 6, 'current_value_in_sequence 2');
+  is($db->next_value_in_sequence('rose_db_sequence_test'), 7, 'next_value_in_sequence 2');
+  is($db->current_value_in_sequence('rose_db_sequence_test'), 7, 'current_value_in_sequence 3');
+
+  $dbh->do('DROP SEQUENCE rose_db_sequence_test');
 
   $db->disconnect;
   $db2->disconnect;
@@ -113,7 +137,7 @@ SKIP:
   $db = Rose::DB->new;
 
   eval { $db->connect };
-  skip("Could not connect to db 'test', 'oracle' - $@", 11)  if($@);
+  skip("Could not connect to db 'test', 'oracle' - $@", 10)  if($@);
   $dbh = $db->dbh;
 
   is($db->domain, 'test', "domain()");
@@ -136,8 +160,6 @@ SKIP:
 
   is($db->autocommit + 0, 0, 'autocommit() 4');
   is($dbh->{'AutoCommit'} + 0, 0, 'autocommit() 5');
-
-  is($db->auto_sequence_name(table => 'foo', column => 'bar'), 'foo_bar_seq', 'auto_sequence_name()');
 
   my $dbh_copy = $db->retain_dbh;
 
@@ -183,15 +205,3 @@ Rose::DB->register_db
 );
 
 is(Rose::DB->new('dsn4')->dsn, 'dbi:Oracle:sid=somedb;host=somehost;port=someport', 'dsn 4');
-
-sub lookup_ip
-{
-  my($name) = shift || return 0;
-
-  my $address = (gethostbyname($name))[4] or return 0;
-
-  my @octets = unpack("CCCC", $address);
-
-  return 0  unless($name && @octets);
-  return join('.', @octets), "\n";
-}

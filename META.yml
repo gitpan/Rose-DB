@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Rose-DB
-version:            0.756
+version:            0.757
 abstract:           ~
 author:  []
 license:            perl

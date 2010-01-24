@@ -20,7 +20,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.756';
+our $VERSION = '0.757';
 
 our $Debug = 0;
 
@@ -2157,6 +2157,22 @@ sub next_value_in_sequence
   return undef;
 }
 
+sub current_value_in_sequence
+{
+  my($self, $seq) = @_;
+  $self->error("Don't know how to select current value in sequence '$seq' " .
+               "for database driver " . $self->driver);
+  return undef;
+}
+
+sub sequence_exists
+{
+  my($self, $seq) = @_;
+  $self->error("Don't know how to tell if sequence '$seq' exists " .
+               "for database driver " . $self->driver);
+  return undef;
+}
+
 sub auto_sequence_name { undef }
 
 sub supports_multi_column_count_distinct  { 1 }
@@ -2168,9 +2184,13 @@ sub format_select_from_subselect { "(\n$_[1]\n  )" }
 
 sub likes_redundant_join_conditions { 0 }
 sub likes_lowercase_table_names     { 0 }
+sub likes_uppercase_table_names     { 0 }
 sub likes_lowercase_schema_names    { 0 }
+sub likes_uppercase_schema_names    { 0 }
 sub likes_lowercase_catalog_names   { 0 }
+sub likes_uppercase_catalog_names   { 0 }
 sub likes_lowercase_sequence_names  { 0 }
+sub likes_uppercase_sequence_names  { 0 }
 sub likes_implicit_joins            { 0 }
 
 sub supports_schema  { 0 }
