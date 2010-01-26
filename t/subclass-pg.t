@@ -305,7 +305,8 @@ my $i = 0;
 
 while($i < @Intervals)
 {
-  my($val, $formatted) = ($Intervals[$i++], $Intervals[$i++]);
+  my($val, $formatted) = ($Intervals[$i], $Intervals[$i + 1]);
+  $i += 2;
 
   my $d = $db->parse_interval($val, 'preserve');
 
