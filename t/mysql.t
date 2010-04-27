@@ -15,7 +15,7 @@ BEGIN
   }
   else
   {
-    Test::More->import(tests => 145);
+    Test::More->import(tests => 146);
   }
 }
 
@@ -112,9 +112,9 @@ is($db->format_array('a', 'b'), q({"a","b"}), 'format_array() 2');
 eval { $db->format_array('x' x 300) };
 ok($@, 'format_array() 3');
 
-my $a = $db->parse_array(q({"a","b"}));
+my $a = $db->parse_array(q({"a","b","\\""}));
 
-ok(@$a == 2 && $a->[0] eq 'a' && $a->[1] eq 'b', 'parse_array() 1');
+ok(@$a == 3 && $a->[0] eq 'a' && $a->[1] eq 'b' &&  $a->[2] eq '"', 'parse_array() 1');
 
 is($db->format_set([ 'a', 'b' ]), 'a,b', 'format_set() 1');
 is($db->format_set('a', 'b'), 'a,b', 'format_set() 2');
@@ -227,6 +227,18 @@ SKIP:
   $db->connect;
   $db->mysql_enable_utf8(1);
   is($db->mysql_enable_utf8, 1, 'mysql_enable_utf8 2');
+
+  if($db->isa('My::DB2'))
+  {
+    $My::DB2::Called{'init_dbh'} = 0;
+    $db = Rose::DB->new('mysql');
+    $db->dbh;
+    is($My::DB2::Called{'init_dbh'}, 1, 'SUPER:: from driver');
+  }
+  else
+  {
+    SKIP: { skip('SUPER:: from driver tests', 1) }
+  }
 }
 
 $db->dsn('dbi:mysql:dbname=dbfoo;host=hfoo;port=pfoo');

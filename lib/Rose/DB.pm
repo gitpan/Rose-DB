@@ -20,7 +20,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.758';
+our $VERSION = '0.759';
 
 our $Debug = 0;
 
@@ -39,6 +39,7 @@ use Rose::Class::MakeMethods::Generic
     'max_interval_characters',
     '_db_cache',
     'db_cache_class',
+    'parent_class',
   ],
 
   inheritable_boolean =>
@@ -206,6 +207,8 @@ sub setup_dynamic_class_for_driver
     @{"${new_class}::ISA"} = ($driver_class, $class);
     *{"${new_class}::STORABLE_thaw"}   = \&STORABLE_thaw;
     *{"${new_class}::STORABLE_freeze"} = \&STORABLE_freeze;
+
+    $new_class->parent_class($class);
 
     # Cache result
     $Rebless{$class,$driver_class} = $new_class;
@@ -454,6 +457,8 @@ sub new
       @{"${new_class}::ISA"} = ($driver_class, $class);
 
       $self = bless {}, $new_class;
+
+      $new_class->parent_class($class);
 
       # Cache result
       $Rebless{$class,$driver_class} = ref $self;
@@ -1575,6 +1580,14 @@ sub format_timestamp
   return $self->date_handler->format_timestamp($date);
 }
 
+sub format_timestamp_with_time_zone
+{  
+  my($self, $date) = @_;
+  return $date  if($self->validate_timestamp_keyword($date) ||
+    ($self->keyword_function_calls && $date =~ /^\w+\(.*\)$/));
+  return $self->date_handler->format_timestamp_with_time_zone($date);
+}
+
 # Date parsing
 
 sub parse_date
@@ -1654,6 +1667,34 @@ sub parse_timestamp
   if($error)
   {
     $self->error("Could not parse timestamp '$value' - $error");
+    return undef;
+  }
+
+  return $dt;
+}
+
+sub parse_timestamp_with_time_zone
+{  
+  my($self, $value) = @_;
+
+  if(UNIVERSAL::isa($value, 'DateTime') || 
+    $self->validate_timestamp_keyword($value))
+  {
+    return $value;
+  }
+
+  my($dt, $error);
+
+  TRY:
+  {
+    local $@;
+    eval { $dt = $self->date_handler->parse_timestamp_with_time_zone($value) };
+    $error = $@;
+  }
+
+  if($error)
+  {
+    $self->error("Could not parse timestamp with time zone '$value' - $error");
     return undef;
   }
 
@@ -1782,7 +1823,9 @@ sub parse_array
 
   while($val =~ s/(?:"((?:[^"\\]+|\\.)*)"|([^",]+))(?:,|$)//)
   {
-    push(@array, map { $_ eq 'NULL' ? undef : $_ } (defined $1 ? $1 : $2));
+    my($item) = map { $_ eq 'NULL' ? undef : $_ } (defined $1 ? $1 : $2);
+    $item =~ s{\\(.)}{$1}g  if(defined $item);
+    push(@array, $item);
   }
 
   return \@array;
@@ -2568,10 +2611,12 @@ BEGIN
   sub format_date      { shift; Rose::DateTime::Util::format_date($_[0], '%Y-%m-%d') }
   sub format_datetime  { shift; Rose::DateTime::Util::format_date($_[0], '%Y-%m-%d %T') }
   sub format_timestamp { shift; Rose::DateTime::Util::format_date($_[0], '%Y-%m-%d %H:%M:%S.%N') }
+  sub format_timestamp_with_time_zone { shift->format_timestamp(@_) }
 
-  sub parse_date       { shift; Rose::DateTime::Util::parse_date($_[0]) }
-  sub parse_datetime   { shift; Rose::DateTime::Util::parse_date($_[0]) }
-  sub parse_timestamp  { shift; Rose::DateTime::Util::parse_date($_[0]) }
+  sub parse_date       { shift; Rose::DateTime::Util::parse_date($_[0], $_[0]->server_tz) }
+  sub parse_datetime   { shift; Rose::DateTime::Util::parse_date($_[0], $_[0]->server_tz) }
+  sub parse_timestamp  { shift; Rose::DateTime::Util::parse_date($_[0], $_[0]->server_tz) }
+  sub parse_timestamp_with_time_zone { shift->parse_timestamp(@_) }
 }
 
 1;
@@ -3596,6 +3641,10 @@ Converts the L<Time::Clock> object TIMECLOCK into the appropriate format for the
 
 Converts the L<DateTime> object DATETIME into the appropriate format for the timestamp (month, day, year, hour, minute, second, fractional seconds) data type of the current data source.  Fractional seconds are optional, and the useful precision may vary depending on the data source.
 
+=item B<format_timestamp_with_time_zone DATETIME>
+
+Converts the L<DateTime> object DATETIME into the appropriate format for the timestamp with time zone (month, day, year, hour, minute, second, fractional seconds, time zone) data type of the current data source.  Fractional seconds are optional, and the useful precision may vary depending on the data source.
+
 =item B<parse_bitfield BITS [, SIZE]>
 
 Parse BITS and return a corresponding L<Bit::Vector> object.  If SIZE is not passed, then it defaults to the number of bits in the parsed bit string.
@@ -3654,6 +3703,12 @@ Parse STRING and return a L<DateTime> object.  STRING should be formatted accord
 
 If STRING is a valid timestamp keyword (according to L<validate_timestamp_keyword|/validate_timestamp_keyword>) or if it looks like a function call (matches C</^\w+\(.*\)$/>) and L<keyword_function_calls|/keyword_function_calls> is true, then it is returned unmodified.  Returns undef if STRING could not be parsed as a valid "timestamp" value.
 
+=item B<parse_timestamp_with_time_zone STRING>
+
+Parse STRING and return a L<DateTime> object.  STRING should be formatted according to the data source's native "timestamp with time zone" (month, day, year, hour, minute, second, fractional seconds, time zone) data type.  Fractional seconds are optional, and the acceptable precision may vary depending on the data source.  
+
+If STRING is a valid timestamp keyword (according to L<validate_timestamp_keyword|/validate_timestamp_keyword>) or if it looks like a function call (matches C</^\w+\(.*\)$/>) and L<keyword_function_calls|/keyword_function_calls> is true, then it is returned unmodified.  Returns undef if STRING could not be parsed as a valid "timestamp with time zone" value.
+
 =item B<validate_boolean_keyword STRING>
 
 Returns true if STRING is a valid keyword for the "boolean" data type of the current data source, false otherwise.  The default implementation accepts the values "TRUE" and "FALSE".
@@ -3708,6 +3763,6 @@ John C. Siracusa (siracusa@gmail.com)
 
 =head1 LICENSE
 
-Copyright (c) 2009 by John C. Siracusa.  All rights reserved.  This program is
+Copyright (c) 2010 by John C. Siracusa.  All rights reserved.  This program is
 free software; you can redistribute it and/or modify it under the same terms
 as Perl itself.

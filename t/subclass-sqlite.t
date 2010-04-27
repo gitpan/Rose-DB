@@ -13,7 +13,7 @@ BEGIN
 
   if(have_db('sqlite_admin'))
   {
-    Test::More->import(tests => 46);
+    Test::More->import(tests => 47);
   }
   else
   {
@@ -104,9 +104,9 @@ is($db->format_array('a', 'b'), q({"a","b"}), 'format_array() 2');
 eval { $db->format_array('x' x 300) };
 ok($@, 'format_array() 3');
 
-my $a = $db->parse_array(q({"a","b"}));
+my $a = $db->parse_array(q({"a","b","\\""}));
 
-ok(@$a == 2 && $a->[0] eq 'a' && $a->[1] eq 'b', 'parse_array() 1');
+ok(@$a == 3 && $a->[0] eq 'a' && $a->[1] eq 'b' &&  $a->[2] eq '"', 'parse_array() 1');
 
 SKIP:
 {
@@ -156,6 +156,18 @@ SKIP:
   my $dbh_copy = $db->retain_dbh;
 
   $db->disconnect;
+
+  if($db->isa('My::DB2'))
+  {
+    $My::DB2::Called{'init_dbh'} = 0;
+    $db = My::DB2->new('sqlite');
+    $db->dbh;
+    is($My::DB2::Called{'init_dbh'}, 1, 'SUPER:: from driver');
+  }
+  else
+  {
+    SKIP: { skip('SUPER:: from driver tests', 1) }
+  }
 }
 
 $db->dsn('dbi:SQLite:dbname=dbfoo');
