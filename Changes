@@ -1,3 +1,7 @@
+0.7591 (04.27.2010) - John Siracusa <siracusa@gmail.com>
+
+    * Corrected skip counts in MySQL tests.
+
 0.759 (04.27.2010) - John Siracusa <siracusa@gmail.com>
 
     * Fixed some inheritance dead ends (Reported by Matt S. Trout)
