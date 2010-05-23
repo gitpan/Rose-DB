@@ -9,7 +9,7 @@ use Rose::DB;
 
 our $Debug = 0;
 
-our $VERSION  = '0.759';
+our $VERSION  = '0.761';
 
 use Rose::Class::MakeMethods::Generic
 (
@@ -388,6 +388,7 @@ sub primary_key_column_names
   my $schema  = $args{'schema'} || $self->schema;
   my $catalog = $args{'catalog'} || $self->catalog;
 
+  no warnings 'uninitialized';
   $table   = uc $table;
   $schema  = uc $schema;
   $catalog = uc $catalog;
@@ -477,10 +478,10 @@ sub validate_date_keyword
 *validate_timestamp_keyword = \&validate_date_keyword;
 *validate_datetime_keyword  = \&validate_date_keyword;
 
-sub should_inline_date_keywords      { 1 }
-sub should_inline_datetime_keywords  { 1 }
-sub should_inline_time_keywords      { 1 }
-sub should_inline_timestamp_keywords { 1 }
+sub should_inline_date_keyword      { 1 }
+sub should_inline_datetime_keyword  { 1 }
+sub should_inline_time_keyword      { 1 }
+sub should_inline_timestamp_keyword { 1 }
 
 package Rose::DB::Oracle::DateHandler;
 

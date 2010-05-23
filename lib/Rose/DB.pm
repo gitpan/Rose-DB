@@ -20,7 +20,7 @@ our @ISA = qw(Rose::Object);
 
 our $Error;
 
-our $VERSION = '0.760';
+our $VERSION = '0.761';
 
 our $Debug = 0;
 
@@ -1105,6 +1105,24 @@ sub begin_work
       eval
       {
         local $dbh->{'RaiseError'} = 1;
+
+        # XXX: Detect DBD::mysql bug (in some versions before 4.012) that
+        # XXX: fails to set Active back to 1 when mysql_auto_reconnect
+        # XXX: is in use.
+        unless($dbh->{'Active'})
+        {
+          if($dbh->{'Driver'}{'Name'} eq 'mysql' && $dbh->{'Driver'}{'Version'} < 4.012)
+          {
+            die 'Database handle does not have Active set to a true value.  DBD::mysql ',
+                'versions before 4.012 may fail to set Active back to 1 when the ',
+                'mysql_auto_reconnect is set.  Try upgrading to DBD::mysql 4.012 or later';
+          }
+          else
+          {
+            die "Cannot start transaction on inactive database handle ($dbh)";
+          }
+        }
+
         $ret = $dbh->begin_work
       };
 
@@ -1140,7 +1158,13 @@ sub commit
 {
   my($self) = shift;
 
-  return 0  unless(defined $self->{'dbh'} && $self->{'dbh'}{'Active'});
+  my $is_active = (defined $self->{'dbh'} && $self->{'dbh'}{'Active'}) ? 1 : 0;
+
+  unless(defined $self->{'dbh'})
+  {
+    $self->error("Could not commit transaction: database handle is undefined");
+    return 0;
+  }
 
   my $dbh = $self->dbh or return undef;
 
@@ -1169,6 +1193,20 @@ sub commit
     {
       no warnings 'uninitialized';
       $self->error("commit() $error - " . $dbh->errstr);
+
+      unless($is_active)
+      {
+        if($dbh->{'Driver'}{'Name'} eq 'mysql' && $dbh->{'Driver'}{'Version'} < 4.012)
+        {
+          $self->error($self->error . '; Also, the database handle did not ' .
+            'have Active set to a true value.  DBD::mysql versions before 4.012 ' .
+            'may fail to set Active back to 1 when the mysql_auto_reconnect is ' .
+            'set.  Try upgrading to DBD::mysql 4.012 or later');
+        }
+
+        return 0;
+      }
+
       return undef;
     }
 
@@ -1191,7 +1229,13 @@ sub rollback
 {
   my($self) = shift;
 
-  return 0  unless(defined $self->{'dbh'} && $self->{'dbh'}{'Active'});
+  my $is_active = (defined $self->{'dbh'} && $self->{'dbh'}{'Active'}) ? 1 : 0;
+
+  unless(defined $self->{'dbh'})
+  {
+    $self->error("Could not roll back transaction: database handle is undefined");
+    return 0;
+  }
 
   my $dbh = $self->dbh or return undef;
 
@@ -1220,6 +1264,20 @@ sub rollback
   {
     no warnings 'uninitialized';
     $self->error("rollback() - $error " . $dbh->errstr);
+
+    unless($is_active)
+    {
+      if($dbh->{'Driver'}{'Name'} eq 'mysql' && $dbh->{'Driver'}{'Version'} < 4.012)
+      {
+        $self->error($self->error . '; Also, the database handle did not ' .
+          'have Active set to a true value.  DBD::mysql versions before 4.012 ' .
+          'may fail to set Active back to 1 when the mysql_auto_reconnect is ' .
+          'set.  Try upgrading to DBD::mysql 4.012 or later');
+      }
+
+      return 0;
+    }
+
     return undef;
   }
 
@@ -1249,7 +1307,6 @@ sub do_transaction
 
     eval
     {
-      local $dbh->{'RaiseError'} = 1;
       $self->begin_work or die $self->error;
       $code->(@_);
       $self->commit or die $self->error;
@@ -2179,25 +2236,34 @@ sub validate_bitfield_keyword         { 0 }
 
 sub validate_boolean_keyword
 {
-  no warnings;
+  no warnings 'uninitialized';
   $_[1] =~ /^(?:TRUE|FALSE)$/;
 }
 
-sub should_inline_integer_keywords          { 0 }
-sub should_inline_float_keywords            { 0 }
-sub should_inline_decimal_keywords          { 0 }
-sub should_inline_numeric_keywords          { 0 }
-sub should_inline_double_precision_keywords { 0 }
-sub should_inline_bigint_keywords           { 0 }
-sub should_inline_date_keywords             { 0 }
-sub should_inline_datetime_keywords         { 0 }
-sub should_inline_time_keywords             { 0 }
-sub should_inline_timestamp_keywords        { 0 }
-sub should_inline_interval_keywords         { 0 }
-sub should_inline_set_keywords              { 0 }
-sub should_inline_array_keywords            { 0 }
-sub should_inline_boolean_keywords          { 0 }
-sub should_inline_bitfield_values           { 0 }
+sub should_inline_keyword
+{
+  no warnings 'uninitialized';
+  ($_[1] =~ /^\w+\(.*\)$/) ? 1 : 0;
+}
+
+BEGIN
+{
+  *should_inline_integer_keyword           = \&should_inline_keyword;
+  *should_inline_float_keyword             = \&should_inline_keyword;
+  *should_inline_decimal_keyword           = \&should_inline_keyword;
+  *should_inline_numeric_keyword           = \&should_inline_keyword;
+  *should_inline_double_precision_keyword  = \&should_inline_keyword;
+  *should_inline_bigint_keyword            = \&should_inline_keyword;
+  *should_inline_date_keyword              = \&should_inline_keyword;
+  *should_inline_datetime_keyword          = \&should_inline_keyword;
+  *should_inline_time_keyword              = \&should_inline_keyword;
+  *should_inline_timestamp_keyword         = \&should_inline_keyword;
+  *should_inline_interval_keyword          = \&should_inline_keyword;
+  *should_inline_set_keyword               = \&should_inline_keyword;
+  *should_inline_array_keyword             = \&should_inline_keyword;
+  *should_inline_boolean_keyword           = \&should_inline_keyword;
+  *should_inline_bitfield_value            = \&should_inline_keyword;
+}
 
 sub next_value_in_sequence
 {
