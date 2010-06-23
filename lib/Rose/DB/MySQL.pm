@@ -15,7 +15,7 @@ TRY:
 
 use Rose::DB;
 
-our $VERSION = '0.759';
+our $VERSION = '0.762';
 
 our $Debug = 0;
 
@@ -228,6 +228,26 @@ sub format_select_start_sql
     join(' ', (map { $hints->{$_} ? uc("sql_$_") : () }
       qw(small_result big_result buffer_result cache no_cache calc_found_rows)),
       (map { $hints->{$_} ? uc($_) : () } qw(high_priority straight_join)));
+}
+
+sub format_select_lock
+{
+  my($self, $class, $lock, $tables_list) = @_;
+
+  $lock = { type => $lock }  unless(ref $lock);
+
+  $lock->{'type'} ||= 'for update'  if($lock->{'for_update'});
+
+  my %types =
+  (
+    'for update' => 'FOR UPDATE',
+    'shared'     => 'LOCK IN SHARE MODE',
+  );
+
+  my $sql = $types{$lock->{'type'}}
+    or Carp::croak "Invalid lock type: $lock->{'type'}";
+
+  return $sql;
 }
 
 sub validate_date_keyword

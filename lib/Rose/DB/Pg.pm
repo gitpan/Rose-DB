@@ -99,6 +99,62 @@ sub last_insertid_from_sth
   return undef;
 }
 
+sub format_select_lock
+{
+  my($self, $class, $lock, $tables_list) = @_;
+
+  $lock = { type => $lock }  unless(ref $lock);
+
+  $lock->{'type'} ||= 'for update'  if($lock->{'for_update'});
+
+  my %types =
+  (
+    'for update' => 'FOR UPDATE',
+    'shared'     => 'FOR SHARE',
+  );
+
+  my $sql = $types{$lock->{'type'}}
+    or Carp::croak "Invalid lock type: $lock->{'type'}";
+
+  my @tables;
+
+  if(my $on = $lock->{'on'})
+  {
+    @tables = map { $self->table_sql_from_lock_on_value($class, $_, $tables_list) } @$on;
+  }
+  elsif(my $lock_tables = $lock->{'tables'})
+  {
+    my %map;
+
+    if($tables_list)
+    {
+      my $tn = 1;
+
+      foreach my $table (@$tables_list)
+      {
+        (my $table_key = $table) =~ s/^(["']?)[^.]+\1\.//;
+        $map{$table_key} = 't' . $tn++;
+      }
+    }
+
+    @tables = map
+      {
+        ref $_ eq 'SCALAR' ? $$_ :
+          $self->auto_quote_table_name(defined $map{$_} ? $map{$_} : $_)
+      }
+      @$lock_tables;
+  }
+
+  if(@tables)
+  {
+    $sql .= ' OF ' . join(', ', @tables);
+  }
+
+  $sql .= ' NOWAIT'  if($lock->{'nowait'});
+
+  return $sql;
+}
+
 sub parse_datetime
 {
   my($self) = shift;

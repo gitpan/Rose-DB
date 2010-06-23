@@ -9,7 +9,7 @@ use Rose::DB;
 
 our $Debug = 0;
 
-our $VERSION  = '0.761';
+our $VERSION  = '0.762';
 
 use Rose::Class::MakeMethods::Generic
 (
@@ -459,6 +459,74 @@ sub format_limit_with_offset
     #$args->{'limit_prefix'} = "SELECT a.* FROM (";
     $args->{'limit_suffix'} = ") a WHERE ROWNUM <= $limit";
   }
+}
+
+sub format_select_lock
+{
+  my($self, $class, $lock, $tables) = @_;
+
+  $lock = { type => $lock }  unless(ref $lock);
+
+  $lock->{'type'} ||= 'for update'  if($lock->{'for_update'});
+
+  unless($lock->{'type'} eq 'for update')
+  {
+    Carp::croak "Invalid lock type: $lock->{'type'}";
+  }
+
+  my $sql = 'FOR UPDATE';
+
+  my @columns;
+
+  if(my $on = $lock->{'on'})
+  {
+    @columns = map { $self->column_sql_from_lock_on_value($class, $_, $tables) } @$on;
+  }
+  elsif(my $columns = $lock->{'columns'})
+  {
+    my %map;
+
+    if($tables)
+    {
+      my $tn = 1;
+
+      foreach my $table (@$tables)
+      {
+        (my $table_key = $table) =~ s/^(["']?)[^.]+\1\.//;
+        $map{$table_key} = 't' . $tn++;
+      }
+    }
+
+    @columns = map
+      {
+        ref $_ eq 'SCALAR' ? $$_ :
+        /^([^.]+)\.([^.]+)$/ ? 
+          $self->auto_quote_column_with_table($2, defined $map{$1} ? $map{$1} : $1) : 
+          $self->auto_quote_column_name($_)
+      }
+      @$columns;
+  }
+
+  if(@columns)
+  {
+    $sql .= ' OF ' . join(', ', @columns);
+  }
+
+  if($lock->{'nowait'})
+  {
+    $sql .= ' NOWAIT';
+  }
+  elsif(my $wait = $lock->{'wait'})
+  {
+    $sql .= " WAIT $wait";
+  }
+
+  if($lock->{'skip_locked'})
+  {
+    $sql .= ' SKIP LOCKED';
+  }
+
+  return $sql;
 }
 
 sub format_boolean { $_[1] ? 't' : 'f' }
