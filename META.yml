@@ -1,40 +1,41 @@
---- #YAML:1.0
-name:               Rose-DB
-version:            0.763
-abstract:           ~
-author:  []
-license:            perl
-distribution_type:  module
-configure_requires:
-    ExtUtils::MakeMaker:  0
+---
+abstract: unknown
+author:
+  - unknown
 build_requires:
-    ExtUtils::MakeMaker:  0
-requires:
-    Bit::Vector::Overload:  6.4
-    Clone::PP:            0
-    DateTime::Duration:   0
-    DateTime::Format::MySQL:  0
-    DateTime::Format::Oracle:  0
-    DateTime::Format::Pg:  0.11
-    DBI:                  0
-    perl:                 5.006000
-    Rose::DateTime::Util:  0.532
-    Rose::Object:         0.854
-    Scalar::Util:         0
-    SQL::ReservedWords:   0
-    Test::More:           0
-    Time::Clock:          0
-resources:
-    bugtracker:   http://rt.cpan.org/NoAuth/Bugs.html?Dist=Rose-DB
-    homepage:     http://rose.googlecode.com/
-    license:      http://dev.perl.org/licenses/
-    MailingList:  http://groups.google.com/group/rose-db-object
-    repository:   http://rose.googlecode.com/svn/trunk/modules/Rose-DB
-no_index:
-    directory:
-        - t
-        - inc
-generated_by:       ExtUtils::MakeMaker version 6.56
+  ExtUtils::MakeMaker: 0
+configure_requires:
+  ExtUtils::MakeMaker: 0
+dynamic_config: 1
+generated_by: 'ExtUtils::MakeMaker version 6.59, CPAN::Meta::Converter version 2.112621'
+license: perl
 meta-spec:
-    url:      http://module-build.sourceforge.net/META-spec-v1.4.html
-    version:  1.4
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: Rose-DB
+no_index:
+  directory:
+    - t
+    - inc
+requires:
+  Bit::Vector::Overload: 6.4
+  Clone::PP: 0
+  DBI: 0
+  DateTime::Duration: 0
+  DateTime::Format::MySQL: 0
+  DateTime::Format::Oracle: 0
+  DateTime::Format::Pg: 0.11
+  Rose::DateTime::Util: 0.532
+  Rose::Object: 0.854
+  SQL::ReservedWords: 0
+  Scalar::Util: 0
+  Test::More: 0
+  Time::Clock: 0
+  perl: 5.006000
+resources:
+  bugtracker: http://rt.cpan.org/NoAuth/Bugs.html?Dist=Rose-DB
+  homepage: http://rose.googlecode.com/
+  license: http://dev.perl.org/licenses/
+  repository: http://rose.googlecode.com/svn/trunk/modules/Rose-DB
+  x_MailingList: http://groups.google.com/group/rose-db-object
+version: 0.764

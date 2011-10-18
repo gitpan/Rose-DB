@@ -1,7 +1,12 @@
+0.764 (10.18.2011) - John Siracusa <siracusa@gmail.com>
+
+    * Use ENGINE=InnoDB instead of TYPE=InnoDB in MySQL table creation
+      statements to avoid an incompatibility with MySQL 5.5 (RT 71757)
+
 0.763 (12.30.2010) - John Siracusa <siracusa@gmail.com>
 
     * Support for Rose::DB::Object 0.794
-	* Return from rollback() early if AutoCommit is set.
+    * Return from rollback() early if AutoCommit is set.
 
 0.762 (06.23.2010) - John Siracusa <siracusa@gmail.com>
 
